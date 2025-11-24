@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate} from 'react-router-dom';
 import { 
   LogOut, 
@@ -12,6 +12,7 @@ import {
   Calendar,
   Clock
 } from 'lucide-react';
+import { useSubscription } from '../context/useSubscriptionHook';
 
 // Static data
 const staticPets = [
@@ -58,7 +59,6 @@ const staticPets = [
 ];
 
 const staticSubscriptionPlan = "Free Mode";
-const staticIsPremiumTier2 = false;
 
 // Schedule utility functions
 const generateUpcomingSchedules = (pets, daysAhead = 7) => {
@@ -172,8 +172,12 @@ const formatDate = (date) => {
 
 const Export = () => {
   const navigate = useNavigate();
-  const [upcomingSchedules, setUpcomingSchedules] = useState([]);
+  const { currentPlan, getPlanFeatures } = useSubscription();
+  const features = getPlanFeatures(currentPlan);
   const petsArray = staticPets;
+  const [upcomingSchedules] = useState(() => 
+    generateUpcomingSchedules(petsArray, 14)
+  );
 
   const navigateTo = (route) => {
     navigate(route);
@@ -184,12 +188,6 @@ const Export = () => {
       navigate('/');
     }
   };
-
-  // Generate schedules when component mounts
-  useEffect(() => {
-    const upcoming = generateUpcomingSchedules(petsArray, 14);
-    setUpcomingSchedules(upcoming);
-  }, []);
 
   // Calculate active schedules
   const activeSchedules = petsArray.reduce((total, pet) => {
@@ -301,7 +299,7 @@ const Export = () => {
 
           {/* Export Button Section */}
           <div className="mt-8 pt-6 border-t border-gray-200">
-            {staticIsPremiumTier2 ? (
+            {features.hasExport ? (
               <button
                 onClick={handleExport}
                 className="w-full bg-[#c18742] text-white py-4 rounded-xl font-bold text-lg hover:bg-[#a87338] transition-colors flex items-center justify-center gap-3"

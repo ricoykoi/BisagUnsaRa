@@ -14,79 +14,7 @@ import {
   Stethoscope,
   X
 } from 'lucide-react';
-
-// Static data
-const staticPets = [
-  {
-    id: "1",
-    name: "Buddy",
-    type: "Dog",
-    breed: "Golden Retriever",
-    age: "3",
-    photo: null,
-    schedules: [
-      {
-        id: "1",
-        type: "Feeding",
-        time: "08:00 AM",
-        frequency: "Daily",
-        notes: "1 cup of dry food"
-      },
-      {
-        id: "2",
-        type: "Walk",
-        time: "06:00 PM",
-        frequency: "Daily",
-        notes: "Evening walk in park"
-      }
-    ],
-    vaccinations: [
-      {
-        id: "1",
-        name: "Rabies",
-        dateGiven: "01/10/2024",
-        nextDueDate: "01/10/2025",
-        veterinarian: "Dr. Smith",
-        notes: "Annual vaccination"
-      }
-    ],
-    vetVisits: [
-      {
-        id: "1",
-        visitDate: "01/10/2024",
-        reason: "Annual Checkup",
-        veterinarian: "Dr. Smith",
-        nextVisitDate: "01/10/2025",
-        diagnosis: "Healthy",
-        treatment: "Routine checkup",
-        notes: "Good overall health"
-      }
-    ]
-  },
-  {
-    id: "2",
-    name: "Whiskers",
-    type: "Cat",
-    breed: "Siamese",
-    age: "2",
-    photo: null,
-    schedules: [
-      {
-        id: "3",
-        type: "Feeding",
-        time: "07:00 AM",
-        frequency: "Daily",
-        notes: "Wet food breakfast"
-      }
-    ],
-    vaccinations: [],
-    vetVisits: []
-  }
-];
-
-const staticSubscriptionPlan = "Free Mode";
-const staticIsPremiumTier1 = false;
-const staticIsPremiumTier2 = false;
+import { useSubscription } from '../context/useSubscriptionHook';
 
 // Date Input Component
 const DateInput = ({ dateValue, onDateChange, label }) => {
@@ -158,13 +86,18 @@ const DateInput = ({ dateValue, onDateChange, label }) => {
 
 const MyPets = () => {
   const navigate = useNavigate();
-  const [pets, setPets] = useState(staticPets);
+  const { getPlanFeatures, currentPlan } = useSubscription();
+  const features = getPlanFeatures(currentPlan);
+  const [pets, setPets] = useState(() => {
+    const saved = localStorage.getItem('pets');
+    return saved ? JSON.parse(saved) : [];
+  });
   const [modalVisible, setModalVisible] = useState(false);
   const [scheduleModalVisible, setScheduleModalVisible] = useState(false);
   const [healthRecordsModalVisible, setHealthRecordsModalVisible] = useState(false);
   const [activeTab, setActiveTab] = useState('vaccinations');
   
-  const maxPets = staticIsPremiumTier2 ? 10 : staticIsPremiumTier1 ? 5 : 2;
+  const maxPets = features.maxPets;
   const petsRemaining = Math.max(0, maxPets - pets.length);
   const [selectedPet, setSelectedPet] = useState(null);
   const [editMode, setEditMode] = useState(false);
@@ -208,6 +141,11 @@ const MyPets = () => {
     navigate(route);
   };
 
+  const savePets = (updatedPets) => {
+    setPets(updatedPets);
+    localStorage.setItem('pets', JSON.stringify(updatedPets));
+  };
+
   const handleSignOut = () => {
     if (confirm("Are you sure you want to sign out?")) {
       navigate('/');
@@ -215,7 +153,7 @@ const MyPets = () => {
   };
 
   const canAccessHealthRecords = () => {
-    if (!staticIsPremiumTier1 && !staticIsPremiumTier2) {
+    if (!features.hasHealthRecords) {
       alert("Health Records are available for Premium Tier 1 and above subscribers.");
       return false;
     }
@@ -252,7 +190,7 @@ const MyPets = () => {
   const handleAddPet = () => {
     if (newPet.name && newPet.type && newPet.age) {
       if (!editMode && pets.length >= maxPets) {
-        alert(`Your ${staticSubscriptionPlan} allows a maximum of ${maxPets} pets. Please upgrade your plan to add more pets.`);
+        alert(`Your ${currentPlan} allows a maximum of ${maxPets} pets. Please upgrade your plan to add more pets.`);
         return;
       }
       
@@ -262,7 +200,7 @@ const MyPets = () => {
             ? { ...pet, ...newPet }
             : pet
         );
-        setPets(updatedPets);
+        savePets(updatedPets);
       } else {
         const newPetObj = {
           ...newPet,
@@ -271,7 +209,7 @@ const MyPets = () => {
           vaccinations: [],
           vetVisits: []
         };
-        setPets([...pets, newPetObj]);
+        savePets([...pets, newPetObj]);
       }
       
       setNewPet({ name: '', type: '', breed: '', age: '', photo: null });
@@ -295,7 +233,7 @@ const MyPets = () => {
 
   const handleDeletePet = (petId) => {
     if (confirm("Are you sure you want to delete this pet?")) {
-      setPets(pets.filter(pet => pet.id !== petId));
+      savePets(pets.filter(pet => pet.id !== petId));
       setModalVisible(false);
       setEditMode(false);
       setSelectedPet(null);
@@ -318,6 +256,18 @@ const MyPets = () => {
     setScheduleModalVisible(true);
   };
 
+  const parseTimeToMinutes = (timeString) => {
+    const [time, period] = timeString.split(' ');
+    const [hours, minutes] = time.split(':').map(Number);
+    let totalMinutes = hours * 60 + minutes;
+    if (period === 'PM' && hours !== 12) {
+      totalMinutes += 12 * 60;
+    } else if (period === 'AM' && hours === 12) {
+      totalMinutes -= 12 * 60;
+    }
+    return totalMinutes;
+  };
+
   const handleAddSchedule = () => {
     if (selectedPet && newSchedule.hour && newSchedule.minute && newSchedule.ampm) {
       const time = `${newSchedule.hour}:${newSchedule.minute} ${newSchedule.ampm}`;
@@ -329,26 +279,29 @@ const MyPets = () => {
 
       const updatedPets = pets.map(pet => {
         if (pet.id === selectedPet.id) {
+          let updatedSchedules;
           if (editScheduleMode) {
-            const updatedSchedules = pet.schedules.map(schedule =>
+            updatedSchedules = pet.schedules.map(schedule =>
               schedule.id === selectedSchedule.id ? scheduleData : schedule
             );
-            return { ...pet, schedules: updatedSchedules };
           } else {
-            return { 
-              ...pet, 
-              schedules: [...pet.schedules, scheduleData] 
-            };
+            updatedSchedules = [...pet.schedules, scheduleData];
           }
+          updatedSchedules.sort((a, b) => parseTimeToMinutes(a.time) - parseTimeToMinutes(b.time));
+          return { ...pet, schedules: updatedSchedules };
         }
         return pet;
       });
 
-      setPets(updatedPets);
+      savePets(updatedPets);
+      setSelectedPet(updatedPets.find(p => p.id === selectedPet.id));
       setNewSchedule({ type: 'Feeding', hour: '8', minute: '00', ampm: 'AM', frequency: 'Daily', notes: '' });
       setEditScheduleMode(false);
       setSelectedSchedule(null);
       setScheduleModalVisible(false);
+      
+      // Show info message about schedule display
+      alert('Schedule ' + (editScheduleMode ? 'updated' : 'added') + ' successfully!\n\nNote: Today\'s scheduled items will only appear in the Dashboard');
     }
   };
 
@@ -379,7 +332,8 @@ const MyPets = () => {
           ? { ...p, schedules: p.schedules.filter(s => s.id !== scheduleId) }
           : p
       );
-      setPets(updatedPets);
+      savePets(updatedPets);
+      setSelectedPet(updatedPets.find(p => p.id === pet.id));
     }
   };
 
@@ -409,7 +363,8 @@ const MyPets = () => {
       return pet;
     });
 
-    setPets(updatedPets);
+    savePets(updatedPets);
+    setSelectedPet(updatedPets.find(p => p.id === selectedPet.id));
     setNewVaccination({
       name: '',
       dateGiven: '',
@@ -444,7 +399,8 @@ const MyPets = () => {
         }
         return pet;
       });
-      setPets(updatedPets);
+      savePets(updatedPets);
+      setSelectedPet(updatedPets.find(p => p.id === selectedPet.id));
     }
   };
 
@@ -473,7 +429,8 @@ const MyPets = () => {
       return pet;
     });
 
-    setPets(updatedPets);
+    savePets(updatedPets);
+    setSelectedPet(updatedPets.find(p => p.id === selectedPet.id));
     setNewVetVisit({
       visitDate: '',
       reason: '',
@@ -512,7 +469,8 @@ const MyPets = () => {
         }
         return pet;
       });
-      setPets(updatedPets);
+      savePets(updatedPets);
+      setSelectedPet(updatedPets.find(p => p.id === selectedPet.id));
     }
   };
 
@@ -540,7 +498,7 @@ const MyPets = () => {
             {pets.length} / {maxPets} Pet Slots Used ({petsRemaining} remaining)
           </div>
           <div className="text-sm text-[#795225] mb-3">
-            Current Plan: {staticSubscriptionPlan}
+            Current Plan: {currentPlan}
           </div>
           {petsRemaining === 0 && (
             <button
@@ -613,7 +571,7 @@ const MyPets = () => {
                     <div className="p-4">
                       <h4 className="text-md font-bold text-[#55423c] mb-3">Schedules</h4>
                       <div className="space-y-3">
-                        {pet.schedules.map(schedule => (
+                        {[...pet.schedules].sort((a, b) => parseTimeToMinutes(a.time) - parseTimeToMinutes(b.time)).map(schedule => (
                           <div key={schedule.id} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-b-0">
                             <div className="flex items-center flex-1">
                               <div className="w-1 h-12 bg-[#c18742] rounded-full mr-3"></div>

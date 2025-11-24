@@ -9,14 +9,12 @@ import {
   Check,
   Star
 } from 'lucide-react';
-
-// Static data
-const staticSubscriptionPlan = "Free Mode";
+import { useSubscription } from '../context/useSubscriptionHook';
 
 const Plans = () => {
   const navigate = useNavigate();
-  const [currentPlan, setCurrentPlan] = useState(staticSubscriptionPlan);
-  const [selectedPlan, setSelectedPlan] = useState(staticSubscriptionPlan);
+  const { currentPlan, upgradePlan } = useSubscription();
+  const [selectedPlan, setSelectedPlan] = useState(currentPlan);
 
   const navigateTo = (route) => {
     navigate(route);
@@ -29,7 +27,7 @@ const Plans = () => {
   const handleSubscribe = () => {
     if (selectedPlan !== currentPlan) {
       alert(`✓ Subscription Updated\nYou are now subscribed to ${selectedPlan}!`);
-      setCurrentPlan(selectedPlan);
+      upgradePlan(selectedPlan);
       navigate('/dashboard');
     } else {
       alert('You are already subscribed to this plan.');
