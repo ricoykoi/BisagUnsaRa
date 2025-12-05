@@ -26,7 +26,7 @@ const Sidebar = () => {
               className="flex items-center gap-3 p-3 rounded-lg text-[#795225] hover:bg-gray-100 transition-colors w-full text-left"
             >
               <Home size={20} />
-              <span className="font-medium">Home</span>
+              <span className="font-medium">Dashboard</span>
             </button>
             <button
               onClick={() => navigateTo("/mypets")}

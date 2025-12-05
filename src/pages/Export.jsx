@@ -1,37 +1,45 @@
-import React, { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import {
-  LogOut,
-  Home,
-  PawPrint,
-  Crown,
   Download,
-  Check,
-  X,
-  Bell,
+  FileText,
+  FileSpreadsheet,
   Calendar,
   Clock,
   CheckCircle,
-  Circle
-} from 'lucide-react';
-import { useSubscription } from '../context/useSubscriptionHook';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+  Circle,
+  Users,
+  Activity,
+  TrendingUp,
+  Shield,
+  ChevronRight,
+  AlertCircle,
+  Sparkles,
+  PieChart,
+  Bell,
+  X,
+  Home,
+  PawPrint,
+  Crown,
+} from "lucide-react";
+import { useSubscription } from "../context/useSubscriptionHook";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 const formatDate = (date) => {
-  const options = { weekday: 'short', month: 'short', day: 'numeric' };
-  return date.toLocaleDateString('en-US', options);
+  const options = { weekday: "short", month: "short", day: "numeric" };
+  return date.toLocaleDateString("en-US", options);
 };
 
 const parseTimeToMinutes = (timeString) => {
   if (!timeString) return 0;
-  const [time, period] = timeString.split(' ');
-  const [hours, minutes] = time.split(':').map(Number);
+  const [time, period] = timeString.split(" ");
+  const [hours, minutes] = time.split(":").map(Number);
   let totalMinutes = hours * 60 + minutes;
 
-  if (period === 'PM' && hours !== 12) {
+  if (period === "PM" && hours !== 12) {
     totalMinutes += 12 * 60;
-  } else if (period === 'AM' && hours === 12) {
+  } else if (period === "AM" && hours === 12) {
     totalMinutes -= 12 * 60;
   }
 
@@ -45,26 +53,28 @@ const generateRecurringSchedules = (baseSchedules, daysAhead = 30) => {
   const msInDay = 24 * 60 * 60 * 1000;
 
   baseSchedules.forEach((schedule) => {
-    const templateDate = schedule.date ? new Date(schedule.date) : new Date(today);
+    const templateDate = schedule.date
+      ? new Date(schedule.date)
+      : new Date(today);
 
     const addInstance = (date) => {
-      const idDate = date.toISOString().split('T')[0];
+      const idDate = date.toISOString().split("T")[0];
       generatedSchedules.push({
         ...schedule,
         id: `${schedule.originalScheduleId}-${idDate}`,
         date: new Date(date),
         isToday: date.toDateString() === today.toDateString(),
-        isCompleted: false
+        isCompleted: false,
       });
     };
 
-    if (schedule.frequency === 'Daily') {
+    if (schedule.frequency === "Daily") {
       for (let i = 0; i < 30; i++) {
         const scheduleDate = new Date(today);
         scheduleDate.setDate(today.getDate() + i);
         addInstance(scheduleDate);
       }
-    } else if (schedule.frequency === 'Weekly') {
+    } else if (schedule.frequency === "Weekly") {
       const thirtyDaysMs = 30 * msInDay;
       addInstance(today);
 
@@ -77,7 +87,7 @@ const generateRecurringSchedules = (baseSchedules, daysAhead = 30) => {
         addInstance(new Date(next));
         next.setDate(next.getDate() + 7);
       }
-    } else if (schedule.frequency === 'Monthly') {
+    } else if (schedule.frequency === "Monthly") {
       const thirtyOneDaysMs = 31 * msInDay;
       addInstance(today);
 
@@ -109,44 +119,47 @@ const Export = () => {
   const { currentPlan, getPlanFeatures } = useSubscription();
   const features = getPlanFeatures(currentPlan);
   const [isExporting, setIsExporting] = useState(false);
-  const [exportFormat, setExportFormat] = useState('pdf');
+  const [exportFormat, setExportFormat] = useState("pdf");
 
-  // Load pets from localStorage (same as dashboard)
+  // Load pets from localStorage
   const pets = useMemo(() => {
-    const saved = localStorage.getItem('pets');
+    const saved = localStorage.getItem("pets");
     return saved ? JSON.parse(saved) : [];
   }, []);
 
-  // Generate all schedules from pets (same as dashboard)
-  const allSchedules = useMemo(() =>
-    pets.flatMap(pet =>
-      (pet.schedules || []).map(schedule => ({
-        ...schedule,
-        originalScheduleId: schedule.id,
-        petName: pet.name,
-        petId: pet.id
-      }))
-    ),
+  // Generate all schedules from pets
+  const allSchedules = useMemo(
+    () =>
+      pets.flatMap((pet) =>
+        (pet.schedules || []).map((schedule) => ({
+          ...schedule,
+          originalScheduleId: schedule.id,
+          petName: pet.name,
+          petId: pet.id,
+        }))
+      ),
     [pets]
   );
 
-  // Use useMemo to cache generated schedules (same logic as dashboard)
+  // Use useMemo to cache generated schedules
   const { todayDate, upcomingSchedules, todaySchedules } = useMemo(() => {
     const generated = generateRecurringSchedules(allSchedules, 30);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const upcoming = generated.filter(s => s.date >= today);
-    const todayScheds = upcoming.filter(s => {
-      const scheduleDate = new Date(s.date);
-      scheduleDate.setHours(0, 0, 0, 0);
-      return scheduleDate.getTime() === today.getTime();
-    }).sort((a, b) => parseTimeToMinutes(a.time) - parseTimeToMinutes(b.time));
+    const upcoming = generated.filter((s) => s.date >= today);
+    const todayScheds = upcoming
+      .filter((s) => {
+        const scheduleDate = new Date(s.date);
+        scheduleDate.setHours(0, 0, 0, 0);
+        return scheduleDate.getTime() === today.getTime();
+      })
+      .sort((a, b) => parseTimeToMinutes(a.time) - parseTimeToMinutes(b.time));
 
     return {
       todayDate: today,
       upcomingSchedules: upcoming,
-      todaySchedules: todayScheds
+      todaySchedules: todayScheds,
     };
   }, [allSchedules]);
 
@@ -154,37 +167,37 @@ const Export = () => {
     navigate(route);
   };
 
-  const handleSignOut = () => {
-    if (confirm("Are you sure you want to sign out?")) {
-      navigate('/');
-    }
-  };
-
-  // Calculate statistics (same as dashboard)
+  // Calculate statistics
   const activeSchedules = pets.reduce((total, pet) => {
     return total + (pet.schedules ? pet.schedules.length : 0);
   }, 0);
 
-  const completedTasks = todaySchedules.filter(schedule => schedule.isCompleted).length;
+  const completedTasks = todaySchedules.filter(
+    (schedule) => schedule.isCompleted
+  ).length;
+  const completionPercentage =
+    todaySchedules.length > 0
+      ? Math.round((completedTasks / todaySchedules.length) * 100)
+      : 0;
 
   const handleExport = async () => {
     if (pets.length === 0) {
-      alert('No pets to export. Add a pet first.');
+      alert("No pets to export. Add a pet first.");
       return;
     }
 
     setIsExporting(true);
 
     try {
-      if (exportFormat === 'pdf') {
+      if (exportFormat === "pdf") {
         await generatePDF();
       } else {
         await generateCSV();
       }
-      alert('Success', 'Data exported successfully!');
+      alert("Success", "Data exported successfully!");
     } catch (error) {
-      console.error('Export failed:', error);
-      alert('Error', 'Failed to export data. Please try again.');
+      console.error("Export failed:", error);
+      alert("Error", "Failed to export data. Please try again.");
     } finally {
       setIsExporting(false);
     }
@@ -197,7 +210,7 @@ const Export = () => {
       // Add title and header
       doc.setFontSize(20);
       doc.setTextColor(85, 66, 60);
-      doc.text('Pet Care Export Summary', 14, 15);
+      doc.text("Pet Care Export Summary", 14, 15);
 
       doc.setFontSize(10);
       doc.setTextColor(121, 82, 37);
@@ -209,7 +222,7 @@ const Export = () => {
       // Add summary statistics
       doc.setFontSize(14);
       doc.setTextColor(85, 66, 60);
-      doc.text('Summary Statistics', 14, yPosition);
+      doc.text("Summary Statistics", 14, yPosition);
       yPosition += 10;
 
       doc.setFontSize(10);
@@ -218,29 +231,37 @@ const Export = () => {
       yPosition += 6;
       doc.text(`Active Schedules: ${activeSchedules}`, 20, yPosition);
       yPosition += 6;
-      doc.text(`Today's Tasks: ${todaySchedules.length} (${completedTasks} completed)`, 20, yPosition);
+      doc.text(
+        `Today's Tasks: ${todaySchedules.length} (${completedTasks} completed)`,
+        20,
+        yPosition
+      );
       yPosition += 6;
-      doc.text(`Upcoming Tasks (30 days): ${upcomingSchedules.length}`, 20, yPosition);
+      doc.text(
+        `Upcoming Tasks (30 days): ${upcomingSchedules.length}`,
+        20,
+        yPosition
+      );
       yPosition += 15;
 
       // Add pets table
       doc.setFontSize(14);
       doc.setTextColor(85, 66, 60);
-      doc.text('Pet Profiles', 14, yPosition);
+      doc.text("Pet Profiles", 14, yPosition);
       yPosition += 10;
 
       autoTable(doc, {
         startY: yPosition,
-        head: [['Name', 'Type', 'Breed', 'Age', 'Schedules']],
-        body: pets.map(pet => [
+        head: [["Name", "Type", "Breed", "Age", "Schedules"]],
+        body: pets.map((pet) => [
           pet.name,
           pet.type,
           pet.breed,
           pet.age,
-          (pet.schedules || []).length
+          (pet.schedules || []).length,
         ]),
         styles: { fontSize: 8 },
-        headStyles: { fillColor: [193, 135, 66] }
+        headStyles: { fillColor: [193, 135, 66] },
       });
 
       yPosition = doc.lastAutoTable.finalY + 10;
@@ -254,62 +275,62 @@ const Export = () => {
       if (todaySchedules.length > 0) {
         autoTable(doc, {
           startY: yPosition,
-          head: [['Time', 'Type', 'Pet', 'Status', 'Notes']],
-          body: todaySchedules.map(schedule => [
+          head: [["Time", "Type", "Pet", "Status", "Notes"]],
+          body: todaySchedules.map((schedule) => [
             schedule.time,
             schedule.type,
             schedule.petName,
-            schedule.isCompleted ? 'Completed' : 'Pending',
-            schedule.notes || ''
+            schedule.isCompleted ? "Completed" : "Pending",
+            schedule.notes || "",
           ]),
           styles: { fontSize: 8 },
-          headStyles: { fillColor: [193, 135, 66] }
+          headStyles: { fillColor: [193, 135, 66] },
         });
         yPosition = doc.lastAutoTable.finalY + 10;
       } else {
         doc.setFontSize(10);
-        doc.text('No schedules for today', 20, yPosition);
+        doc.text("No schedules for today", 20, yPosition);
         yPosition += 10;
       }
 
       // Add upcoming schedules
       doc.setFontSize(14);
       doc.setTextColor(85, 66, 60);
-      doc.text('Upcoming Schedules (Next 30 Days)', 14, yPosition);
+      doc.text("Upcoming Schedules (Next 30 Days)", 14, yPosition);
       yPosition += 10;
 
       if (upcomingSchedules.length > 0) {
         autoTable(doc, {
           startY: yPosition,
-          head: [['Date', 'Time', 'Type', 'Pet', 'Frequency', 'Notes']],
-          body: upcomingSchedules.map(schedule => [
+          head: [["Date", "Time", "Type", "Pet", "Frequency", "Notes"]],
+          body: upcomingSchedules.map((schedule) => [
             formatDate(schedule.date),
             schedule.time,
             schedule.type,
             schedule.petName,
             schedule.frequency,
-            schedule.notes || ''
+            schedule.notes || "",
           ]),
           styles: { fontSize: 7 },
-          headStyles: { fillColor: [193, 135, 66] }
+          headStyles: { fillColor: [193, 135, 66] },
         });
       } else {
         doc.setFontSize(10);
-        doc.text('No upcoming schedules', 20, yPosition);
+        doc.text("No upcoming schedules", 20, yPosition);
       }
 
       // Save the PDF
-      doc.save(`pet-care-export-${new Date().toISOString().split('T')[0]}.pdf`);
+      doc.save(`pet-care-export-${new Date().toISOString().split("T")[0]}.pdf`);
       resolve();
     });
   };
 
   const generateCSV = () => {
     return new Promise((resolve) => {
-      let csvContent = 'Pet Care Export Summary\n\n';
+      let csvContent = "Pet Care Export Summary\n\n";
 
       // Summary section
-      csvContent += 'SUMMARY STATISTICS\n';
+      csvContent += "SUMMARY STATISTICS\n";
       csvContent += `Total Pets,${pets.length}\n`;
       csvContent += `Active Schedules,${activeSchedules}\n`;
       csvContent += `Today's Tasks,${todaySchedules.length}\n`;
@@ -319,327 +340,449 @@ const Export = () => {
       csvContent += `Current Plan,${currentPlan}\n\n`;
 
       // Pets section
-      csvContent += 'PET PROFILES\n';
-      csvContent += 'Name,Type,Breed,Age,Number of Schedules\n';
-      pets.forEach(pet => {
-        csvContent += `${pet.name},${pet.type},${pet.breed},${pet.age},${(pet.schedules || []).length}\n`;
+      csvContent += "PET PROFILES\n";
+      csvContent += "Name,Type,Breed,Age,Number of Schedules\n";
+      pets.forEach((pet) => {
+        csvContent += `${pet.name},${pet.type},${pet.breed},${pet.age},${
+          (pet.schedules || []).length
+        }\n`;
       });
-      csvContent += '\n';
+      csvContent += "\n";
 
       // Today's schedules
       csvContent += "TODAY'S SCHEDULES\n";
-      csvContent += 'Time,Type,Pet,Status,Notes\n';
-      todaySchedules.forEach(schedule => {
-        csvContent += `${schedule.time},${schedule.type},${schedule.petName},${schedule.isCompleted ? 'Completed' : 'Pending'},"${schedule.notes || ''}"\n`;
+      csvContent += "Time,Type,Pet,Status,Notes\n";
+      todaySchedules.forEach((schedule) => {
+        csvContent += `${schedule.time},${schedule.type},${schedule.petName},${
+          schedule.isCompleted ? "Completed" : "Pending"
+        },"${schedule.notes || ""}"\n`;
       });
-      csvContent += '\n';
+      csvContent += "\n";
 
       // Upcoming schedules
-      csvContent += 'UPCOMING SCHEDULES\n';
-      csvContent += 'Date,Time,Type,Pet,Frequency,Notes\n';
-      upcomingSchedules.forEach(schedule => {
-        csvContent += `${formatDate(schedule.date)},${schedule.time},${schedule.type},${schedule.petName},${schedule.frequency},"${schedule.notes || ''}"\n`;
+      csvContent += "UPCOMING SCHEDULES\n";
+      csvContent += "Date,Time,Type,Pet,Frequency,Notes\n";
+      upcomingSchedules.forEach((schedule) => {
+        csvContent += `${formatDate(schedule.date)},${schedule.time},${
+          schedule.type
+        },${schedule.petName},${schedule.frequency},"${
+          schedule.notes || ""
+        }"\n`;
       });
 
       // Create and download CSV file
-      const blob = new Blob([csvContent], { type: 'text/csv' });
+      const blob = new Blob([csvContent], { type: "text/csv" });
       const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
+      const link = document.createElement("a");
       link.href = url;
-      link.download = `pet-care-export-${new Date().toISOString().split('T')[0]}.csv`;
+      link.download = `pet-care-export-${
+        new Date().toISOString().split("T")[0]
+      }.csv`;
       link.click();
       window.URL.revokeObjectURL(url);
       resolve();
     });
   };
 
+  // Filter upcoming schedules (excluding today)
+  const futureSchedules = useMemo(
+    () =>
+      upcomingSchedules
+        .filter((s) => {
+          const scheduleDate = new Date(s.date);
+          scheduleDate.setHours(0, 0, 0, 0);
+          return scheduleDate.getTime() > todayDate.getTime();
+        })
+        .slice(0, 20),
+    [upcomingSchedules, todayDate]
+  );
+
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* Main Content */}
-      <main className="flex-1 overflow-y-auto pb-20">
-        {/* Summary Stats */}
-        <div className="p-4">
-          <div className="grid grid-cols-3 gap-3 mb-6">
-            <div className="bg-white rounded-xl p-4 text-center shadow-sm">
-              <div className="text-2xl font-bold text-[#c18742]">{pets.length}</div>
-              <div className="text-sm text-[#795225]">Pets</div>
+    <div className="min-h-screen bg-[#f8f6f4]">
+      {/* Header Section */}
+      <div className="bg-white p-6">
+        <div className="">
+          <div className="text-center mb-6">
+            <h1 className="text-3xl font-bold mb-3 text-[#55423c]">
+              Export Your Pet Care Data 🗂️
+            </h1>
+            <p className="text-[#795225] text-lg">
+              Generate reports and export your pet care schedules
+            </p>
+          </div>
+
+          {/* Current Plan Badge */}
+          <div className="flex justify-center">
+            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-[#ffd68e] to-[#f2c97d] rounded-full px-6 py-3 border border-[#c18742] shadow-sm">
+              <Download size={20} className="text-[#55423c]" />
+              <span className="font-semibold text-[#55423c]">
+                Export Feature:{" "}
+                <span className="text-[#795225]">
+                  {features.hasExport ? "Available" : "Premium Only"}
+                </span>
+              </span>
             </div>
-            <div className="bg-white rounded-xl p-4 text-center shadow-sm">
-              <div className="text-2xl font-bold text-[#c18742]">{activeSchedules}</div>
-              <div className="text-sm text-[#795225]">Active Schedules</div>
-            </div>
-            <div className="bg-white rounded-xl p-4 text-center shadow-sm">
-              <div className="text-2xl font-bold text-[#c18742]">
-                {completedTasks}/{todaySchedules.length}
+          </div>
+        </div>
+      </div>
+
+      <main className="mx-auto p-4 md:p-6 space-y-6">
+        {/* Quick Stats */}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="bg-white rounded-xl p-4 shadow-sm border border-[#e8d7ca]">
+            <div className="flex items-center gap-3">
+              <div className="bg-[#ffd68e] p-2 rounded-lg">
+                <Users size={20} className="text-[#795225]" />
               </div>
-              <div className="text-sm text-[#795225]">Today's Tasks</div>
+              <div>
+                <div className="text-lg font-bold text-[#55423c]">
+                  {pets.length}
+                </div>
+                <div className="text-sm text-[#795225]">Total Pets</div>
+              </div>
+            </div>
+          </div>
+          <div className="bg-white rounded-xl p-4 shadow-sm border border-[#e8d7ca]">
+            <div className="flex items-center gap-3">
+              <div className="bg-[#ffd68e] p-2 rounded-lg">
+                <Activity size={20} className="text-[#795225]" />
+              </div>
+              <div>
+                <div className="text-lg font-bold text-[#55423c]">
+                  {activeSchedules}
+                </div>
+                <div className="text-sm text-[#795225]">Active Schedules</div>
+              </div>
             </div>
           </div>
         </div>
 
         {/* Export Format Selection */}
-        <div className="bg-white rounded-xl mx-4 p-4 mb-4 shadow-sm">
-          <h3 className="text-lg font-bold text-[#55423c] mb-3">Export Format</h3>
-          <div className="flex gap-2">
+        <div className="bg-white rounded-xl p-6 shadow-sm border border-[#e8d7ca]">
+          <h3 className="text-lg font-bold text-[#55423c] mb-4 flex items-center gap-2">
+            <FileText size={20} />
+            Export Format
+          </h3>
+          <div className="grid grid-cols-2 gap-3">
             <button
-              className={`flex-1 px-4 py-3 rounded-lg font-medium transition-colors ${exportFormat === 'pdf'
-                ? 'bg-[#c18742] text-white'
-                : 'bg-gray-100 text-[#795225] hover:bg-gray-200'
-                }`}
-              onClick={() => setExportFormat('pdf')}
+              className={`flex items-center justify-center gap-3 p-4 rounded-xl transition-all ${
+                exportFormat === "pdf"
+                  ? "bg-gradient-to-r from-[#c18742] to-[#a87338] text-white shadow-lg transform scale-105"
+                  : "bg-[#f8f6f4] text-[#795225] hover:bg-[#e8d7ca] border border-[#e8d7ca]"
+              }`}
+              onClick={() => setExportFormat("pdf")}
             >
-              PDF Document
+              <FileText size={24} />
+              <div className="text-left">
+                <div className="font-bold">PDF Document</div>
+                <div className="text-xs opacity-80">For printing & sharing</div>
+              </div>
+              {exportFormat === "pdf" && <CheckCircle size={20} />}
             </button>
             <button
-              className={`flex-1 px-4 py-3 rounded-lg font-medium transition-colors ${exportFormat === 'csv'
-                ? 'bg-[#c18742] text-white'
-                : 'bg-gray-100 text-[#795225] hover:bg-gray-200'
-                }`}
-              onClick={() => setExportFormat('csv')}
+              className={`flex items-center justify-center gap-3 p-4 rounded-xl transition-all ${
+                exportFormat === "csv"
+                  ? "bg-gradient-to-r from-[#55423c] to-[#6a524a] text-white shadow-lg transform scale-105"
+                  : "bg-[#f8f6f4] text-[#795225] hover:bg-[#e8d7ca] border border-[#e8d7ca]"
+              }`}
+              onClick={() => setExportFormat("csv")}
             >
-              CSV Spreadsheet
+              <FileSpreadsheet size={24} />
+              <div className="text-left">
+                <div className="font-bold">CSV Spreadsheet</div>
+                <div className="text-xs opacity-80">For data analysis</div>
+              </div>
+              {exportFormat === "csv" && <CheckCircle size={20} />}
             </button>
           </div>
         </div>
 
-        {/* Schedule Preview Section */}
-        <div className="bg-white rounded-xl mx-4 p-6 shadow-sm">
-          <h2 className="text-xl font-bold text-[#55423c] mb-6">Schedule Preview</h2>
+        {/* Data Preview */}
+        <div className="bg-white rounded-xl p-6 shadow-sm border border-[#e8d7ca]">
+          <h3 className="text-lg font-bold text-[#55423c] mb-6">
+            Data Preview
+          </h3>
 
-          {/* Today's Schedules */}
+          {/* Today's Schedule Preview */}
           <div className="mb-8">
-            <h3 className="text-lg font-semibold text-[#c18742] mb-4 flex items-center gap-2">
-              <Calendar size={18} />
-              Today's Schedule Record
-            </h3>
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="font-semibold text-[#c18742] flex items-center gap-2">
+                <Calendar size={18} />
+                Today's Schedules
+              </h4>
+              <span className="text-sm text-[#795225] bg-[#f8f6f4] px-3 py-1 rounded-full">
+                {completedTasks}/{todaySchedules.length} completed
+              </span>
+            </div>
 
             {todaySchedules.length > 0 ? (
               <div className="space-y-3">
                 {todaySchedules.map((schedule) => (
-                  <div key={schedule.id} className="flex items-center gap-4 p-4 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors">
+                  <div
+                    key={schedule.id}
+                    className="flex items-center gap-4 p-4 rounded-lg border border-[#e8d7ca] hover:bg-[#f8f6f4] transition-colors"
+                  >
                     <div className="flex-shrink-0">
-                      {schedule.isCompleted ? (
-                        <CheckCircle className="text-green-500" size={20} />
-                      ) : (
-                        <Circle className="text-gray-400" size={20} />
-                      )}
-                    </div>
-
-                    <div className="bg-[#ffd68e] px-3 py-1 rounded-full text-xs font-medium text-[#55423c] min-w-[80px] text-center">
-                      Today
-                    </div>
-
-                    <div className="flex-1 flex items-center justify-between">
-                      <div className="flex-1">
-                        <div className="font-semibold text-[#55423c] text-sm">
-                          {schedule.time}
-                        </div>
-                        <div className="text-xs text-gray-600">
-                          <span className="font-medium">{schedule.type}</span> • {schedule.petName}
-                        </div>
-                        {schedule.notes && (
-                          <div className="text-xs text-gray-500 italic mt-1">
-                            {schedule.notes}
-                          </div>
+                      <button className="p-2">
+                        {schedule.isCompleted ? (
+                          <CheckCircle className="text-green-500" size={20} />
+                        ) : (
+                          <Circle className="text-[#c18742]" size={20} />
                         )}
+                      </button>
+                    </div>
+
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="font-bold text-[#55423c] text-sm">
+                            {schedule.time}
+                          </div>
+                          <div className="text-xs text-[#795225]">
+                            <span className="font-medium">{schedule.type}</span>{" "}
+                            • {schedule.petName}
+                          </div>
+                        </div>
+                        <div className="bg-[#ffd68e] text-[#795225] text-xs px-2 py-1 rounded-full font-medium">
+                          Today
+                        </div>
                       </div>
-                      {schedule.notificationsEnabled && (
-                        <Bell className="text-[#c18742] fill-[#c18742]" size={16} />
+                      {schedule.notes && (
+                        <div className="mt-2 text-xs text-[#795225] italic bg-[#f8f6f4] p-2 rounded">
+                          📝 {schedule.notes}
+                        </div>
                       )}
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="text-center py-6 text-gray-500 italic bg-gray-50 rounded-lg">
-                No schedules for today
+              <div className="text-center py-8 text-[#795225] bg-[#f8f6f4] rounded-lg">
+                <Calendar size={32} className="mx-auto mb-3 text-[#e8d7ca]" />
+                <p className="font-medium">No schedules for today</p>
               </div>
             )}
           </div>
 
-          {/* Upcoming Schedules */}
+          {/* Upcoming Schedules Preview */}
           <div>
-            <h3 className="text-lg font-semibold text-[#c18742] mb-4 flex items-center gap-2">
-              <Clock size={18} />
-              Upcoming Schedule Record (Next 30 Days)
-            </h3>
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="font-semibold text-[#c18742] flex items-center gap-2">
+                <Clock size={18} />
+                Upcoming Schedules
+              </h4>
+              <span className="text-sm text-[#795225] bg-[#f8f6f4] px-3 py-1 rounded-full">
+                Next 30 days
+              </span>
+            </div>
 
-            {upcomingSchedules.filter(s => {
-              const scheduleDate = new Date(s.date);
-              scheduleDate.setHours(0, 0, 0, 0);
-              return scheduleDate.getTime() > todayDate.getTime();
-            }).length > 0 ? (
+            {futureSchedules.length > 0 ? (
               <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
-                {upcomingSchedules
-                  .filter(s => {
-                    const scheduleDate = new Date(s.date);
-                    scheduleDate.setHours(0, 0, 0, 0);
-                    return scheduleDate.getTime() > todayDate.getTime();
-                  })
-                  .slice(0, 20)
-                  .map((schedule) => (
-                    <div key={schedule.id} className="flex items-center gap-4 p-4 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors">
-                      <div className="bg-[#ffd68e] px-3 py-1 rounded-full text-xs font-medium text-[#55423c] min-w-[80px] text-center">
+                {futureSchedules.map((schedule) => (
+                  <div
+                    key={schedule.id}
+                    className="p-4 rounded-lg border border-[#e8d7ca] hover:bg-[#f8f6f4] transition-colors"
+                  >
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="bg-[#ffd68e] text-[#795225] text-xs px-2 py-1 rounded-full font-medium">
                         {formatDate(schedule.date)}
                       </div>
-
-                      <div className="flex-1 flex items-center justify-between">
-                        <div className="flex-1">
-                          <div className="font-semibold text-[#55423c] text-sm">
-                            {schedule.time}
-                          </div>
-                          <div className="text-xs text-gray-600">
-                            <span className="font-medium">{schedule.type}</span> • {schedule.petName}
-                          </div>
-                          <div className="text-xs text-[#c18742] italic">
-                            {schedule.frequency}
-                          </div>
-                          {schedule.notes && (
-                            <div className="text-xs text-gray-500 italic mt-1">
-                              {schedule.notes}
-                            </div>
-                          )}
-                        </div>
-                        {schedule.notificationsEnabled && (
-                          <Bell className="text-[#c18742] fill-[#c18742]" size={16} />
-                        )}
+                      <div className="text-sm font-medium text-[#795225]">
+                        {schedule.time}
                       </div>
                     </div>
-                  ))}
-                {upcomingSchedules.filter(s => {
-                  const scheduleDate = new Date(s.date);
-                  scheduleDate.setHours(0, 0, 0, 0);
-                  return scheduleDate.getTime() > todayDate.getTime();
-                }).length > 20 && (
-                    <div className="text-center py-2 text-sm text-gray-500 italic">
-                      ... and {upcomingSchedules.filter(s => {
-                        const scheduleDate = new Date(s.date);
-                        scheduleDate.setHours(0, 0, 0, 0);
-                        return scheduleDate.getTime() > todayDate.getTime();
-                      }).length - 20} more schedules
+                    <div className="font-semibold text-[#55423c] text-sm">
+                      {schedule.type}
                     </div>
-                  )}
+                    <div className="text-xs text-[#795225] mb-2">
+                      For {schedule.petName}
+                    </div>
+                    {schedule.notes && (
+                      <div className="text-xs text-[#795225] italic bg-[#f8f6f4] p-2 rounded">
+                        📝 {schedule.notes}
+                      </div>
+                    )}
+                  </div>
+                ))}
+                {upcomingSchedules.length > 20 && (
+                  <div className="text-center py-3 text-sm text-[#795225] italic">
+                    ... and {upcomingSchedules.length - 20} more schedules
+                  </div>
+                )}
               </div>
             ) : (
-              <div className="text-center py-6 text-gray-500 italic bg-gray-50 rounded-lg">
-                No upcoming schedules
+              <div className="text-center py-8 text-[#795225] bg-[#f8f6f4] rounded-lg">
+                <Clock size={32} className="mx-auto mb-3 text-[#e8d7ca]" />
+                <p className="font-medium">No upcoming schedules</p>
               </div>
             )}
           </div>
+        </div>
 
-          {/* Export Button Section */}
-          <div className="mt-8 pt-6 border-t border-gray-200">
-            {features.hasExport ? (
-              <button
-                onClick={handleExport}
-                disabled={isExporting || pets.length === 0}
-                className={`w-full ${isExporting || pets.length === 0 ? 'bg-gray-400' : 'bg-[#c18742] hover:bg-[#a87338]'
-                  } text-white py-4 rounded-xl font-bold text-lg transition-colors flex items-center justify-center gap-3`}
-              >
-                {isExporting ? (
-                  <>
-                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
-                    Exporting...
-                  </>
-                ) : (
-                  <>
-                    <Download size={24} />
-                    Export to {exportFormat.toUpperCase()}
-                  </>
-                )}
-              </button>
-            ) : (
-              <div className="bg-[#ffd68e] border border-[#c18742] rounded-xl p-6 text-center">
-                <div className="w-12 h-12 bg-[#c18742] rounded-full flex items-center justify-center mx-auto mb-4">
-                  <X className="text-white" size={24} />
+        {/* Export Action Section */}
+        {features.hasExport ? (
+          <div className="bg-gradient-to-r from-[#55423c] to-[#6a524a] rounded-xl p-6 shadow-lg">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="bg-white p-2 rounded-lg">
+                  <Download size={24} className="text-[#c18742]" />
                 </div>
-                <h3 className="text-lg font-bold text-[#c18742] mb-2">
+                <div>
+                  <h3 className="text-xl font-bold text-white">
+                    Ready to Export
+                  </h3>
+                  <p className="text-[#e8d7ca]">
+                    Generate your {exportFormat.toUpperCase()} report
+                  </p>
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="text-sm text-[#e8d7ca]">Current Plan</div>
+                <div className="font-bold text-[#ffd68e]">{currentPlan}</div>
+              </div>
+            </div>
+
+            <button
+              onClick={handleExport}
+              disabled={isExporting || pets.length === 0}
+              className={`w-full ${
+                isExporting || pets.length === 0
+                  ? "bg-gray-400 cursor-not-allowed"
+                  : "bg-gradient-to-r from-[#ffd68e] to-[#f2c97d] hover:from-[#f2c97d] hover:to-[#e6c27d] transform hover:scale-[1.02]"
+              } text-[#55423c] py-4 rounded-xl font-bold text-lg transition-all shadow-lg flex items-center justify-center gap-3`}
+            >
+              {isExporting ? (
+                <>
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#55423c]"></div>
+                  Exporting...
+                </>
+              ) : pets.length === 0 ? (
+                <>
+                  <AlertCircle size={20} />
+                  Add Pets First
+                </>
+              ) : (
+                <>
+                  <Download size={24} />
+                  Export to {exportFormat.toUpperCase()}
+                  <ChevronRight size={20} />
+                </>
+              )}
+            </button>
+          </div>
+        ) : (
+          <div className="bg-gradient-to-r from-[#ffd68e] to-[#f2c97d] rounded-xl p-6 shadow-sm border border-[#c18742]">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="bg-white p-3 rounded-lg">
+                <Shield size={24} className="text-[#c18742]" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-[#55423c]">
                   Premium Tier 2 Feature
                 </h3>
-                <p className="text-[#55423c] mb-4">
-                  Unlock PDF/CSV export by upgrading to Premium Tier 2
+                <p className="text-[#795225]">
+                  Unlock PDF/CSV export capability
                 </p>
-                <button
-                  onClick={() => navigateTo('/plans')}
-                  className="bg-[#c18742] text-white px-8 py-3 rounded-lg font-bold hover:bg-[#a87338] transition-colors"
-                >
-                  Upgrade Now
-                </button>
               </div>
-            )}
+            </div>
+
+            <div className="bg-white/50 rounded-lg p-4 mb-4">
+              <div className="flex items-center gap-2 text-[#795225] mb-3">
+                <AlertCircle size={16} />
+                <span className="font-medium">What you're missing:</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div className="flex items-center gap-2">
+                  <Sparkles size={14} className="text-[#c18742]" />
+                  <span>PDF document export</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Sparkles size={14} className="text-[#c18742]" />
+                  <span>CSV spreadsheet export</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Sparkles size={14} className="text-[#c18742]" />
+                  <span>Professional reports</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Sparkles size={14} className="text-[#c18742]" />
+                  <span>Data backup</span>
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={() => navigateTo("/plans")}
+              className="w-full bg-gradient-to-r from-[#c18742] to-[#a87338] text-white py-3 rounded-lg font-bold hover:from-[#a87338] hover:to-[#8b5e2f] transition-all"
+            >
+              Upgrade to Premium Tier 2
+            </button>
+          </div>
+        )}
+
+        {/* Export Summary */}
+        <div className="bg-white rounded-xl p-6 shadow-sm border border-[#e8d7ca]">
+          <h3 className="text-lg font-bold text-[#55423c] mb-4 flex items-center gap-2">
+            <PieChart size={20} />
+            Export Summary
+          </h3>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-[#f8f6f4] p-4 rounded-lg">
+              <div className="text-2xl font-bold text-[#c18742] mb-1">
+                {pets.length}
+              </div>
+              <div className="text-sm text-[#795225]">Pets Included</div>
+            </div>
+            <div className="bg-[#f8f6f4] p-4 rounded-lg">
+              <div className="text-2xl font-bold text-[#c18742] mb-1">
+                {todaySchedules.length}
+              </div>
+              <div className="text-sm text-[#795225]">Today's Tasks</div>
+            </div>
+            <div className="bg-[#f8f6f4] p-4 rounded-lg">
+              <div className="text-2xl font-bold text-[#c18742] mb-1">
+                {upcomingSchedules.length}
+              </div>
+              <div className="text-sm text-[#795225]">Upcoming Tasks</div>
+            </div>
+            <div className="bg-[#f8f6f4] p-4 rounded-lg">
+              <div className="text-2xl font-bold text-[#c18742] mb-1">
+                {completionPercentage}%
+              </div>
+              <div className="text-sm text-[#795225]">Completion Rate</div>
+            </div>
           </div>
 
-          {/* Additional Export Information */}
-          <div className="mt-6 bg-gray-50 rounded-lg p-4">
-            <h4 className="font-semibold text-[#55423c] mb-2">What's included in the export:</h4>
-            <ul className="text-sm text-gray-600 space-y-1">
-              <li>• All pet profiles and information</li>
-              <li>• Today's schedule record with completion status</li>
-              <li>• Upcoming schedule record (30 days)</li>
-              <li>• Schedule frequency and notes</li>
-              <li>• Summary statistics and export metadata</li>
+          <div className="mt-4 p-4 bg-[#f8f6f4] rounded-lg">
+            <h4 className="font-semibold text-[#55423c] mb-2 flex items-center gap-2">
+              <TrendingUp size={16} />
+              What's included in your export:
+            </h4>
+            <ul className="text-sm text-[#795225] space-y-2">
+              <li className="flex items-center gap-2">
+                <CheckCircle size={16} className="text-green-500" />
+                All pet profiles with detailed information
+              </li>
+              <li className="flex items-center gap-2">
+                <CheckCircle size={16} className="text-green-500" />
+                Complete schedule history and upcoming tasks
+              </li>
+              <li className="flex items-center gap-2">
+                <CheckCircle size={16} className="text-green-500" />
+                Task completion status and notes
+              </li>
+              <li className="flex items-center gap-2">
+                <CheckCircle size={16} className="text-green-500" />
+                Summary statistics and analytics
+              </li>
+              <li className="flex items-center gap-2">
+                <CheckCircle size={16} className="text-green-500" />
+                Export metadata and timestamps
+              </li>
             </ul>
           </div>
         </div>
-
-        {/* Data Summary */}
-        <div className="bg-white rounded-xl mx-4 mt-4 p-6 shadow-sm">
-          <h3 className="text-lg font-bold text-[#55423c] mb-4">Data Summary</h3>
-          <div className="space-y-3">
-            <div className="flex justify-between items-center py-2 border-b border-gray-100">
-              <span className="text-[#55423c] font-medium">Total Pets</span>
-              <span className="font-bold text-[#c18742]">{pets.length}</span>
-            </div>
-            <div className="flex justify-between items-center py-2 border-b border-gray-100">
-              <span className="text-[#55423c] font-medium">Active Schedules</span>
-              <span className="font-bold text-[#c18742]">{activeSchedules}</span>
-            </div>
-            <div className="flex justify-between items-center py-2 border-b border-gray-100">
-              <span className="text-[#55423c] font-medium">Today's Tasks</span>
-              <span className="font-bold text-[#c18742]">{completedTasks}/{todaySchedules.length}</span>
-            </div>
-            <div className="flex justify-between items-center py-2 border-b border-gray-100">
-              <span className="text-[#55423c] font-medium">Upcoming Tasks (30 days)</span>
-              <span className="font-bold text-[#c18742]">{upcomingSchedules.length}</span>
-            </div>
-            <div className="flex justify-between items-center py-2">
-              <span className="text-[#55423c] font-medium">Current Plan</span>
-              <span className="font-bold text-[#c18742]">{currentPlan}</span>
-            </div>
-          </div>
-        </div>
       </main>
-
-      {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 h-16">
-        <div className="flex h-full">
-          <button
-            onClick={() => navigateTo('/dashboard')}
-            className="flex-1 flex flex-col items-center justify-center text-[#795225] hover:text-[#55423c] transition-colors"
-          >
-            <Home size={20} />
-            <span className="text-xs mt-1">Home</span>
-          </button>
-          <button
-            onClick={() => navigateTo('/mypets')}
-            className="flex-1 flex flex-col items-center justify-center text-[#795225] hover:text-[#55423c] transition-colors"
-          >
-            <PawPrint size={20} />
-            <span className="text-xs mt-1">Pets</span>
-          </button>
-          <button
-            onClick={() => navigateTo('/plans')}
-            className="flex-1 flex flex-col items-center justify-center text-[#795225] hover:text-[#55423c] transition-colors"
-          >
-            <Crown size={20} />
-            <span className="text-xs mt-1">Plans</span>
-          </button>
-          <button className="flex-1 flex flex-col items-center justify-center border-t-2 border-[#c18742] text-[#c18742] font-bold">
-            <Download size={20} />
-            <span className="text-xs mt-1">Export</span>
-          </button>
-        </div>
-      </nav>
     </div>
   );
 };
