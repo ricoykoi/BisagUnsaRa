@@ -25,14 +25,6 @@ const Login = () => {
       return;
     }
 
-    // Check against registered users in localStorage
-    const users = JSON.parse(localStorage.getItem("users") || "[]");
-    const user = users.find(
-      (u) => u.username === username && u.password === password
-    );
-
-    // Store current user in localStorage
-    localStorage.setItem("currentUser", JSON.stringify(user));
     navigate("/dashboard");
   };
 
