@@ -73,6 +73,11 @@ const Register = () => {
     const existingUsers = JSON.parse(localStorage.getItem('users') || '[]')
     const updatedUsers = [...existingUsers, newUser]
     localStorage.setItem('users', JSON.stringify(updatedUsers))
+
+    // Initialize user-specific data
+    localStorage.setItem(`pets_${newUser.id}`, JSON.stringify([]))
+    localStorage.setItem(`subscription_${newUser.id}`, 'Free Mode')
+
     localStorage.setItem('currentUser', JSON.stringify(newUser))
 
     alert('Account has been created successfully!')
@@ -87,14 +92,11 @@ const Register = () => {
       <div className="w-full max-w-md">
         {/* Logo Section */}
         <div className="text-center mb-8">
-          <div className="w-24 h-24 mx-auto mb-4 bg-white rounded-full flex items-center justify-center shadow-lg">
-            <div className="text-center">
-              <span className="text-3xl">🐾</span>
-              <div className="text-xs font-bold mt-1" style={{ color: COLORS.darkBrown }}>
-                FurFur
-              </div>
-            </div>
-          </div>
+          <img
+            src="/src/assets/furfurlogo.png"
+            alt="FurFur Logo"
+            className="w-48 h-48 mx-auto mb-4 rounded-full shadow-lg object-cover"
+          />
           <h1 className="text-3xl font-bold mb-2" style={{ color: COLORS.darkBrown }}>
             Create Account
           </h1>

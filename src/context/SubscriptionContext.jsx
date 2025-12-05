@@ -1,9 +1,25 @@
-import React, { useState } from 'react';
+// Helper function to get current user
+const getCurrentUser = () => {
+  const userStr = localStorage.getItem('currentUser');
+  return userStr ? JSON.parse(userStr) : null;
+};
+
+// Helper function to get user-specific subscription key
+const getUserSubscriptionKey = (userId) => `subscription_${userId}`;
+
+import React, { useState, useEffect } from 'react';
 import { SubscriptionContext } from './SubscriptionContextDef';
 
 // Provider component
 export const SubscriptionProvider = ({ children }) => {
-  const [currentPlan, setCurrentPlan] = useState('Free Mode');
+  const [currentPlan, setCurrentPlan] = useState(() => {
+    const user = getCurrentUser();
+    if (user) {
+      const saved = localStorage.getItem(getUserSubscriptionKey(user.id));
+      return saved || 'Free Mode';
+    }
+    return 'Free Mode';
+  });
 
   const getPlanFeatures = (plan) => {
     const plans = {
@@ -40,7 +56,20 @@ export const SubscriptionProvider = ({ children }) => {
     return currentPetCount < features.maxPets;
   };
 
+  // Update subscription when user changes
+  useEffect(() => {
+    const user = getCurrentUser();
+    if (user) {
+      const saved = localStorage.getItem(getUserSubscriptionKey(user.id));
+      setCurrentPlan(saved || 'Free Mode');
+    }
+  }, []);
+
   const upgradePlan = (newPlan) => {
+    const user = getCurrentUser();
+    if (user) {
+      localStorage.setItem(getUserSubscriptionKey(user.id), newPlan);
+    }
     setCurrentPlan(newPlan);
   };
 

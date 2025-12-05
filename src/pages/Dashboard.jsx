@@ -37,7 +37,7 @@ const parseTimeToMinutes = (timeString) => {
   return totalMinutes;
 };
 
-const generateRecurringSchedules = (baseSchedules, daysAhead = 30) => {
+const generateRecurringSchedules = (baseSchedules) => {
   const generatedSchedules = [];
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -113,6 +113,11 @@ const generateRecurringSchedules = (baseSchedules, daysAhead = 30) => {
     if (dateCompare !== 0) return dateCompare;
     return parseTimeToMinutes(a.time) - parseTimeToMinutes(b.time);
   });
+};
+
+const getCurrentUser = () => {
+  const userStr = localStorage.getItem('currentUser');
+  return userStr ? JSON.parse(userStr) : null;
 };
 
 const Dashboard = () => {
@@ -255,10 +260,10 @@ const Dashboard = () => {
       }
       return pet;
     });
-    
+
     setPets(updatedPets);
     localStorage.setItem('pets', JSON.stringify(updatedPets));
-    
+
     // Refresh upcoming schedules
     const newAllSchedules = updatedPets.flatMap(pet =>
       (pet.schedules || []).map(s => ({
@@ -315,7 +320,7 @@ const Dashboard = () => {
         petId: pet.id
       }))
     );
-    const generated = generateRecurringSchedules(newAllSchedules, 90);
+    const generated = generateRecurringSchedules(newAllSchedules);
     setUpcomingSchedules(generated.filter(s => s.date >= todayDate));
   };
 
@@ -461,7 +466,7 @@ const Dashboard = () => {
               ))}
             </div>
 
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 gap-4">
               {randomTips.map((tip) => (
                 <div key={tip.id} className="bg-white rounded-lg p-4 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
                   <h3 className="font-semibold text-[#55423c] mb-2 text-sm">{tip.title}</h3>

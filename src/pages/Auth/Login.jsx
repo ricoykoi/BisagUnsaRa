@@ -11,23 +11,7 @@ const COLORS = {
   lightGray: '#f5f5f5'
 }
 
-// Static user data for demo purposes
-const staticUsers = [
-  {
-    id: "1",
-    username: "demo",
-    password: "password",
-    name: "Demo User",
-    subscriptionPlan: "Free Mode"
-  },
-  {
-    id: "2", 
-    username: "premium",
-    password: "password",
-    name: "Premium User",
-    subscriptionPlan: "Premium Tier 2"
-  }
-];
+
 
 const Login = () => {
   const [username, setUsername] = useState('')
@@ -36,18 +20,19 @@ const Login = () => {
 
   const handleLogin = (e) => {
     e.preventDefault();
-    
+
     // Basic validation
     if (!username || !password) {
       alert('Please enter both username and password')
       return
     }
 
-    // Check against static users
-    const user = staticUsers.find(u => u.username === username && u.password === password)
-    
+    // Check against registered users in localStorage
+    const users = JSON.parse(localStorage.getItem('users') || '[]')
+    const user = users.find(u => u.username === username && u.password === password)
+
     if (user) {
-      // Store user in localStorage for demo purposes
+      // Store current user in localStorage
       localStorage.setItem('currentUser', JSON.stringify(user))
       navigate('/dashboard')
     } else {
@@ -55,17 +40,7 @@ const Login = () => {
     }
   }
 
-  const handleDemoLogin = () => {
-    // Auto-fill demo credentials
-    setUsername('demo')
-    setPassword('password')
-  }
 
-  const handlePremiumDemo = () => {
-    // Auto-fill premium demo credentials
-    setUsername('premium')
-    setPassword('password')
-  }
 
   return (
     <div 
@@ -75,14 +50,11 @@ const Login = () => {
       <div className="w-full max-w-md">
         {/* Logo Section */}
         <div className="text-center mb-12">
-          <div className="w-32 h-32 mx-auto mb-6 bg-white rounded-full flex items-center justify-center shadow-lg">
-            <div className="text-center">
-              <span className="text-4xl">🐾</span>
-              <div className="text-sm font-bold mt-1" style={{ color: COLORS.darkBrown }}>
-                FurFur
-              </div>
-            </div>
-          </div>
+          <img
+            src="/src/assets/furfurlogo.png"
+            alt="FurFur Logo"
+            className="w-48 h-48 mx-auto mb-6 rounded-full shadow-lg object-cover"
+          />
           <h1 className="text-4xl font-bold mb-3" style={{ color: COLORS.darkBrown }}>
             FurFur
           </h1>
@@ -123,45 +95,16 @@ const Login = () => {
             />
           </div>
 
-          {/* Demo Login Buttons */}
-          <div className="space-y-3">
-            <button
-              type="submit"
-              className="w-full py-4 rounded-xl font-bold text-lg transition-all transform hover:scale-105 shadow-lg"
-              style={{ 
-                backgroundColor: COLORS.coffeeBrown,
-                color: COLORS.white
-              }}
-            >
-              Login
-            </button>
-
-            <div className="text-center text-sm space-y-2">
-              <button
-                type="button"
-                onClick={handleDemoLogin}
-                className="block w-full py-3 rounded-lg border-2 transition-all hover:bg-white hover:bg-opacity-50"
-                style={{ 
-                  borderColor: COLORS.coffeeBrown,
-                  color: COLORS.darkBrown
-                }}
-              >
-                🐕 Demo Login (Free Plan)
-              </button>
-              
-              <button
-                type="button"
-                onClick={handlePremiumDemo}
-                className="block w-full py-3 rounded-lg border-2 transition-all hover:bg-white hover:bg-opacity-50"
-                style={{ 
-                  borderColor: COLORS.coffeeBrown,
-                  color: COLORS.darkBrown
-                }}
-              >
-                🐈 Premium Demo (Tier 2)
-              </button>
-            </div>
-          </div>
+          <button
+            type="submit"
+            className="w-full py-4 rounded-xl font-bold text-lg transition-all transform hover:scale-105 shadow-lg"
+            style={{
+              backgroundColor: COLORS.coffeeBrown,
+              color: COLORS.white
+            }}
+          >
+            Login
+          </button>
         </form>
 
         {/* Create Account Link */}
@@ -175,16 +118,7 @@ const Login = () => {
           </Link>
         </div>
 
-        {/* Demo Credentials Info */}
-        <div className="mt-12 p-4 rounded-lg bg-white bg-opacity-50 border border-white border-opacity-30">
-          <h3 className="font-bold text-center mb-2" style={{ color: COLORS.darkBrown }}>
-            Demo Credentials
-          </h3>
-          <div className="text-sm space-y-1" style={{ color: COLORS.grayBrown }}>
-            <div><strong>Free Plan:</strong> demo / password</div>
-            <div><strong>Premium Tier 2:</strong> premium / password</div>
-          </div>
-        </div>
+
       </div>
     </div>
   )
