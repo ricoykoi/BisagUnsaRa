@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useNavigate} from 'react-router-dom';
 import { 
   LogOut, 
@@ -18,68 +18,33 @@ import { useSubscription } from '../context/useSubscriptionHook';
 
 // Date Input Component
 const DateInput = ({ dateValue, onDateChange, label }) => {
-  const days = Array.from({ length: 31 }, (_, i) => ({ label: String(i + 1).padStart(2, '0'), value: String(i + 1).padStart(2, '0') }));
-  const months = Array.from({ length: 12 }, (_, i) => ({ label: String(i + 1).padStart(2, '0'), value: String(i + 1).padStart(2, '0') }));
-  
-  const [month, day, year] = dateValue ? dateValue.split('/') : ['', '', ''];
-  
-  const handleMonthChange = (e) => {
-    const value = e.target.value;
-    const newDate = `${value}/${day || '01'}/${year || ''}`;
-    onDateChange(newDate);
+  const handleDateChange = (e) => {
+    const value = e.target.value; // YYYY-MM-DD format from date input
+    if (value) {
+      const [year, month, day] = value.split('-');
+      const formatted = `${month}/${day}/${year}`;
+      onDateChange(formatted);
+    } else {
+      onDateChange('');
+    }
   };
-  
-  const handleDayChange = (e) => {
-    const value = e.target.value;
-    const newDate = `${month || '01'}/${value}/${year || ''}`;
-    onDateChange(newDate);
+
+  // Convert MM/DD/YYYY to YYYY-MM-DD for date input
+  const getInputValue = () => {
+    if (!dateValue) return '';
+    const [month, day, year] = dateValue.split('/');
+    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
   };
-  
-  const handleYearChange = (e) => {
-    const numericText = e.target.value.replace(/[^0-9]/g, '');
-    const newDate = `${month || '01'}/${day || '01'}/${numericText}`;
-    onDateChange(newDate);
-  };
-  
+
   return (
     <div className="mb-4">
       {label && <label className="block text-sm font-medium text-gray-700 mb-2">{label}</label>}
-      <div className="flex items-center space-x-2">
-        <select
-          value={month}
-          onChange={handleMonthChange}
-          className="flex-1 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#c18742]"
-        >
-          <option value="">MM</option>
-          {months.map((item) => (
-            <option key={item.value} value={item.value}>{item.label}</option>
-          ))}
-        </select>
-        
-        <span className="text-gray-500">/</span>
-        
-        <select
-          value={day}
-          onChange={handleDayChange}
-          className="flex-1 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#c18742]"
-        >
-          <option value="">DD</option>
-          {days.map((item) => (
-            <option key={item.value} value={item.value}>{item.label}</option>
-          ))}
-        </select>
-        
-        <span className="text-gray-500">/</span>
-        
-        <input
-          type="text"
-          placeholder="YYYY"
-          value={year}
-          onChange={handleYearChange}
-          className="flex-1 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#c18742]"
-          maxLength={4}
-        />
-      </div>
+      <input
+        type="date"
+        value={getInputValue()}
+        onChange={handleDateChange}
+        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#c18742]"
+      />
     </div>
   );
 };
@@ -108,6 +73,18 @@ const MyPets = () => {
     age: '',
     photo: null
   });
+
+  // Handle image file selection
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setNewPet({...newPet, photo: e.target.result});
+      };
+      reader.readAsDataURL(file);
+    }
+  };
   const [newSchedule, setNewSchedule] = useState({ 
     type: 'Feeding', 
     hour: '8', 
@@ -337,6 +314,16 @@ const MyPets = () => {
     }
   };
 
+  // Helper function to compare dates in MM/DD/YYYY format
+  const isDateBefore = (date1, date2) => {
+    if (!date1 || !date2) return false;
+    const [month1, day1, year1] = date1.split('/').map(Number);
+    const [month2, day2, year2] = date2.split('/').map(Number);
+    const d1 = new Date(year1, month1 - 1, day1);
+    const d2 = new Date(year2, month2 - 1, day2);
+    return d1 < d2;
+  };
+
   // Health Records Management
   const handleAddVaccination = () => {
     if (!newVaccination.name || !newVaccination.dateGiven) {
@@ -344,11 +331,17 @@ const MyPets = () => {
       return;
     }
 
+    // Check if next due date is before date given
+    if (newVaccination.nextDueDate && isDateBefore(newVaccination.nextDueDate, newVaccination.dateGiven)) {
+      alert('Next due date cannot be before the date given.');
+      return;
+    }
+
     const updatedPets = pets.map(pet => {
       if (pet.id === selectedPet.id) {
         if (editHealthRecordMode) {
           const updatedVaccinations = pet.vaccinations.map(vaccination =>
-            vaccination.id === selectedHealthRecord.id 
+            vaccination.id === selectedHealthRecord.id
               ? { ...newVaccination, id: selectedHealthRecord.id }
               : vaccination
           );
@@ -407,6 +400,12 @@ const MyPets = () => {
   const handleAddVetVisit = () => {
     if (!newVetVisit.visitDate || !newVetVisit.reason) {
       alert('Please fill in all required fields (*)');
+      return;
+    }
+
+    // Check if next visit date is before visit date
+    if (newVetVisit.nextVisitDate && isDateBefore(newVetVisit.nextVisitDate, newVetVisit.visitDate)) {
+      alert('Next visit date cannot be before the visit date.');
       return;
     }
 
@@ -700,9 +699,24 @@ const MyPets = () => {
                 placeholder="Age*"
                 value={newPet.age}
                 onChange={(e) => setNewPet({...newPet, age: e.target.value})}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-[#c18742]"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-[#c18742]"
               />
-              
+
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Pet Photo (optional)</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageChange}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#c18742]"
+                />
+                {newPet.photo && (
+                  <div className="mt-2">
+                    <img src={newPet.photo} alt="Pet preview" className="w-16 h-16 rounded-full object-cover" />
+                  </div>
+                )}
+              </div>
+
               <div className="flex space-x-2">
                 <button
                   onClick={() => {
@@ -853,10 +867,22 @@ const MyPets = () => {
       {/* Health Records Modal */}
       {healthRecordsModalVisible && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl w-full max-w-2xl max-h-[85vh] overflow-hidden">
-            <div className="p-6">
-              <h2 className="text-xl font-bold text-[#55423c] mb-4 text-center">Health Records</h2>
-              
+          <div className="bg-white rounded-xl w-full max-w-2xl max-h-[85vh] flex flex-col">
+            <div className="p-6 flex-1 overflow-y-auto">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold text-[#55423c]">Health Records</h2>
+                <button
+                  onClick={() => {
+                    setHealthRecordsModalVisible(false);
+                    setEditHealthRecordMode(false);
+                    setSelectedHealthRecord(null);
+                  }}
+                  className="text-gray-500 hover:text-gray-700 p-2"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+
               {/* Tab Navigation */}
               <div className="flex border-b border-gray-200 mb-4">
                 <button
@@ -880,188 +906,116 @@ const MyPets = () => {
                   Vet Visits
                 </button>
               </div>
-              
-              <div className="max-h-[60vh] overflow-y-auto">
-                {/* Vaccinations Tab */}
-                {activeTab === 'vaccinations' && (
-                  <div>
-                    <h3 className="text-lg font-semibold text-[#55423c] mb-4">
-                      {editHealthRecordMode ? 'Edit Vaccination' : 'Add New Vaccination'}
-                    </h3>
-                    
-                    <input
-                      type="text"
-                      placeholder="Vaccination Name*"
-                      value={newVaccination.name}
-                      onChange={(e) => setNewVaccination({...newVaccination, name: e.target.value})}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-[#c18742]"
-                    />
-                    
-                    <DateInput
-                      label="Date Given*"
-                      dateValue={newVaccination.dateGiven}
-                      onDateChange={(value) => setNewVaccination({...newVaccination, dateGiven: value})}
-                    />
-                    
-                    <DateInput
-                      label="Next Due Date"
-                      dateValue={newVaccination.nextDueDate}
-                      onDateChange={(value) => setNewVaccination({...newVaccination, nextDueDate: value})}
-                    />
-                    
-                    <input
-                      type="text"
-                      placeholder="Veterinarian"
-                      value={newVaccination.veterinarian}
-                      onChange={(e) => setNewVaccination({...newVaccination, veterinarian: e.target.value})}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-[#c18742]"
-                    />
-                    
-                    <textarea
-                      placeholder="Notes"
-                      value={newVaccination.notes}
-                      onChange={(e) => setNewVaccination({...newVaccination, notes: e.target.value})}
-                      rows={3}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-[#c18742] resize-none"
-                    />
-                    
-                    {/* Vaccination History */}
-                    <div className="mt-6">
-                      <h4 className="font-semibold text-[#55423c] mb-3">Vaccination History:</h4>
-                      {selectedPet?.vaccinations?.length > 0 ? (
-                        <div className="space-y-3">
-                          {selectedPet.vaccinations.map((vaccination) => (
-                            <div key={vaccination.id} className="bg-gray-50 rounded-lg p-3 flex justify-between items-center">
-                              <div>
-                                <div className="font-medium text-[#55423c]">{vaccination.name}</div>
-                                <div className="text-sm text-gray-600">Given: {vaccination.dateGiven}</div>
-                                {vaccination.nextDueDate && (
-                                  <div className="text-sm text-[#c18742]">Next Due: {vaccination.nextDueDate}</div>
-                                )}
-                              </div>
-                              <div className="flex space-x-2">
-                                <button
-                                  onClick={() => handleEditVaccination(vaccination)}
-                                  className="bg-gray-200 text-gray-700 px-2 py-1 rounded text-xs hover:bg-gray-300 transition-colors"
-                                >
-                                  Edit
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteVaccination(vaccination.id)}
-                                  className="bg-red-100 text-red-600 px-2 py-1 rounded text-xs hover:bg-red-200 transition-colors"
-                                >
-                                  Delete
-                                </button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-gray-500 text-center py-4">No vaccination records yet.</p>
-                      )}
-                    </div>
-                  </div>
-                )}
-                
-                {/* Vet Visits Tab */}
-                {activeTab === 'vetVisits' && (
-                  <div>
-                    <h3 className="text-lg font-semibold text-[#55423c] mb-4">
-                      {editHealthRecordMode ? 'Edit Vet Visit' : 'Add New Vet Visit'}
-                    </h3>
-                    
-                    <DateInput
-                      label="Visit Date*"
-                      dateValue={newVetVisit.visitDate}
-                      onDateChange={(value) => setNewVetVisit({...newVetVisit, visitDate: value})}
-                    />
-                    
-                    <input
-                      type="text"
-                      placeholder="Reason for Visit*"
-                      value={newVetVisit.reason}
-                      onChange={(e) => setNewVetVisit({...newVetVisit, reason: e.target.value})}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-[#c18742]"
-                    />
-                    
-                    <input
-                      type="text"
-                      placeholder="Veterinarian"
-                      value={newVetVisit.veterinarian}
-                      onChange={(e) => setNewVetVisit({...newVetVisit, veterinarian: e.target.value})}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-[#c18742]"
-                    />
-                    
-                    <DateInput
-                      label="Next Visit Date"
-                      dateValue={newVetVisit.nextVisitDate}
-                      onDateChange={(value) => setNewVetVisit({...newVetVisit, nextVisitDate: value})}
-                    />
-                    
-                    <input
-                      type="text"
-                      placeholder="Diagnosis"
-                      value={newVetVisit.diagnosis}
-                      onChange={(e) => setNewVetVisit({...newVetVisit, diagnosis: e.target.value})}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-[#c18742]"
-                    />
-                    
-                    <input
-                      type="text"
-                      placeholder="Treatment"
-                      value={newVetVisit.treatment}
-                      onChange={(e) => setNewVetVisit({...newVetVisit, treatment: e.target.value})}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-[#c18742]"
-                    />
-                    
-                    <textarea
-                      placeholder="Notes"
-                      value={newVetVisit.notes}
-                      onChange={(e) => setNewVetVisit({...newVetVisit, notes: e.target.value})}
-                      rows={3}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-[#c18742] resize-none"
-                    />
-                    
-                    {/* Vet Visit History */}
-                    <div className="mt-6">
-                      <h4 className="font-semibold text-[#55423c] mb-3">Vet Visit History:</h4>
-                      {selectedPet?.vetVisits?.length > 0 ? (
-                        <div className="space-y-3">
-                          {selectedPet.vetVisits.map((visit) => (
-                            <div key={visit.id} className="bg-gray-50 rounded-lg p-3 flex justify-between items-center">
-                              <div className="flex-1">
-                                <div className="font-medium text-[#55423c]">{visit.reason}</div>
-                                <div className="text-sm text-gray-600">Date: {visit.visitDate}</div>
-                                {visit.diagnosis && (
-                                  <div className="text-sm text-gray-600">Diagnosis: {visit.diagnosis}</div>
-                                )}
-                              </div>
-                              <div className="flex space-x-2">
-                                <button
-                                  onClick={() => handleEditVetVisit(visit)}
-                                  className="bg-gray-200 text-gray-700 px-2 py-1 rounded text-xs hover:bg-gray-300 transition-colors"
-                                >
-                                  Edit
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteVetVisit(visit.id)}
-                                  className="bg-red-100 text-red-600 px-2 py-1 rounded text-xs hover:bg-red-200 transition-colors"
-                                >
-                                  Delete
-                                </button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-gray-500 text-center py-4">No vet visit records yet.</p>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-              
-              <div className="flex space-x-2 mt-6 pt-4 border-t border-gray-200">
+
+              {/* Vaccinations Tab */}
+              {activeTab === 'vaccinations' && (
+                <div>
+                  <h3 className="text-lg font-semibold text-[#55423c] mb-4">
+                    {editHealthRecordMode ? 'Edit Vaccination' : 'Add New Vaccination'}
+                  </h3>
+
+                  <input
+                    type="text"
+                    placeholder="Vaccination Name*"
+                    value={newVaccination.name}
+                    onChange={(e) => setNewVaccination({...newVaccination, name: e.target.value})}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-[#c18742]"
+                  />
+
+                  <DateInput
+                    label="Date Given*"
+                    dateValue={newVaccination.dateGiven}
+                    onDateChange={(value) => setNewVaccination({...newVaccination, dateGiven: value})}
+                  />
+
+                  <DateInput
+                    label="Next Due Date"
+                    dateValue={newVaccination.nextDueDate}
+                    onDateChange={(value) => setNewVaccination({...newVaccination, nextDueDate: value})}
+                  />
+
+                  <input
+                    type="text"
+                    placeholder="Veterinarian"
+                    value={newVaccination.veterinarian}
+                    onChange={(e) => setNewVaccination({...newVaccination, veterinarian: e.target.value})}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-[#c18742]"
+                  />
+
+                  <textarea
+                    placeholder="Notes"
+                    value={newVaccination.notes}
+                    onChange={(e) => setNewVaccination({...newVaccination, notes: e.target.value})}
+                    rows={3}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-[#c18742] resize-none"
+                  />
+                </div>
+              )}
+
+              {/* Vet Visits Tab */}
+              {activeTab === 'vetVisits' && (
+                <div>
+                  <h3 className="text-lg font-semibold text-[#55423c] mb-4">
+                    {editHealthRecordMode ? 'Edit Vet Visit' : 'Add New Vet Visit'}
+                  </h3>
+
+                  <DateInput
+                    label="Visit Date*"
+                    dateValue={newVetVisit.visitDate}
+                    onDateChange={(value) => setNewVetVisit({...newVetVisit, visitDate: value})}
+                  />
+
+                  <input
+                    type="text"
+                    placeholder="Reason for Visit*"
+                    value={newVetVisit.reason}
+                    onChange={(e) => setNewVetVisit({...newVetVisit, reason: e.target.value})}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-[#c18742]"
+                  />
+
+                  <input
+                    type="text"
+                    placeholder="Veterinarian"
+                    value={newVetVisit.veterinarian}
+                    onChange={(e) => setNewVetVisit({...newVetVisit, veterinarian: e.target.value})}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-[#c18742]"
+                  />
+
+                  <DateInput
+                    label="Next Visit Date"
+                    dateValue={newVetVisit.nextVisitDate}
+                    onDateChange={(value) => setNewVetVisit({...newVetVisit, nextVisitDate: value})}
+                  />
+
+                  <input
+                    type="text"
+                    placeholder="Diagnosis"
+                    value={newVetVisit.diagnosis}
+                    onChange={(e) => setNewVetVisit({...newVetVisit, diagnosis: e.target.value})}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-[#c18742]"
+                  />
+
+                  <input
+                    type="text"
+                    placeholder="Treatment"
+                    value={newVetVisit.treatment}
+                    onChange={(e) => setNewVetVisit({...newVetVisit, treatment: e.target.value})}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-[#c18742]"
+                  />
+
+                  <textarea
+                    placeholder="Notes"
+                    value={newVetVisit.notes}
+                    onChange={(e) => setNewVetVisit({...newVetVisit, notes: e.target.value})}
+                    rows={3}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-[#c18742] resize-none"
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="p-6 border-t border-gray-200 bg-white">
+              <div className="flex space-x-2">
                 <button
                   onClick={() => {
                     setHealthRecordsModalVisible(false);
@@ -1072,7 +1026,7 @@ const MyPets = () => {
                 >
                   Close
                 </button>
-                
+
                 <button
                   onClick={activeTab === 'vaccinations' ? handleAddVaccination : handleAddVetVisit}
                   className="flex-1 bg-[#c18742] text-white py-2 rounded-lg font-medium hover:bg-[#a87338] transition-colors"

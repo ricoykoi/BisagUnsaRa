@@ -1,35 +1,22 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate} from 'react-router-dom';
-import { 
-  LogOut, 
-  Home, 
-  PawPrint, 
-  Crown, 
-  Download, 
+import {
+  LogOut,
+  Home,
+  PawPrint,
+  Crown,
+  Download,
   Bell,
   CheckCircle,
   Circle,
   Calendar,
   Clock,
   Heart,
-  Stethoscope
+  Stethoscope,
+  RefreshCw
 } from 'lucide-react';
 import { useSubscription } from '../context/useSubscriptionHook';
-
-const petCareTips = [
-  {
-    title: "Proper Hydration for Dogs",
-    content: "Make sure your dog has access to fresh water at all times, especially during hot weather."
-  },
-  {
-    title: "Cat Grooming Tips",
-    content: "Regular brushing helps reduce hairballs and keeps your cat's coat healthy."
-  },
-  {
-    title: "Exercise for Small Pets",
-    content: "Even small pets need daily exercise. Consider toys that encourage movement."
-  }
-];
+import petCareTips from '../api/petCareTips.js';
 
 const formatDate = (date) => {
   const options = { weekday: 'short', month: 'short', day: 'numeric' };
@@ -132,6 +119,29 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const { currentPlan, getPlanFeatures } = useSubscription();
   const features = getPlanFeatures(currentPlan);
+
+  // Function to get 3 random tips
+  const getRandomTips = (tips, count = 3) => {
+    const shuffled = [...tips].sort(() => 0.5 - Math.random());
+    return shuffled.slice(0, count);
+  };
+
+  // Category filter state
+  const [selectedCategory, setSelectedCategory] = useState('general');
+
+  // Refresh state for tips
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  // Get 3 random tips filtered by category
+  const randomTips = useMemo(() => {
+    const filteredTips = selectedCategory === 'all' ? petCareTips : petCareTips.filter(tip => tip.category === selectedCategory);
+    return getRandomTips(filteredTips);
+  }, [selectedCategory, refreshKey]);
+
+  // Handle refresh tips
+  const handleRefreshTips = () => {
+    setRefreshKey(prev => prev + 1);
+  };
   
   // Load pets from localStorage or use empty array
   const [pets, setPets] = useState(() => {
@@ -292,10 +302,10 @@ const Dashboard = () => {
       }
       return pet;
     });
-    
+
     setPets(updatedPets);
     localStorage.setItem('pets', JSON.stringify(updatedPets));
-    
+
     // Refresh schedules
     const newAllSchedules = updatedPets.flatMap(pet =>
       (pet.schedules || []).map(s => ({
@@ -307,6 +317,36 @@ const Dashboard = () => {
     );
     const generated = generateRecurringSchedules(newAllSchedules, 90);
     setUpcomingSchedules(generated.filter(s => s.date >= todayDate));
+  };
+
+  const handleToggleHealthNotification = (petId, recordType, recordId) => {
+    const updatedPets = pets.map(pet => {
+      if (pet.id === petId) {
+        if (recordType === 'vaccination') {
+          return {
+            ...pet,
+            vaccinations: pet.vaccinations.map(vacc =>
+              vacc.id === recordId
+                ? { ...vacc, notificationsEnabled: !vacc.notificationsEnabled }
+                : vacc
+            )
+          };
+        } else if (recordType === 'vetVisit') {
+          return {
+            ...pet,
+            vetVisits: pet.vetVisits.map(visit =>
+              visit.id === recordId
+                ? { ...visit, notificationsEnabled: !visit.notificationsEnabled }
+                : visit
+            )
+          };
+        }
+      }
+      return pet;
+    });
+
+    setPets(updatedPets);
+    localStorage.setItem('pets', JSON.stringify(updatedPets));
   };
 
   const handleSignOut = () => {
@@ -392,6 +432,53 @@ const Dashboard = () => {
             )}
           </div>
         </div>
+
+        {/* Pet Care Tips Section - Only visible for Premium Tier 2 subscribers */}
+        {features.hasCareTips && (
+          <div className="bg-white rounded-xl mx-4 mb-4 p-4 shadow-sm">
+            <h2 className="text-lg font-bold text-[#55423c] mb-4">Pet Care Tips</h2>
+
+            {/* Category Filter Buttons */}
+            <div className="flex flex-wrap gap-2 mb-4">
+              {[
+                { key: 'general', label: 'General' },
+                { key: 'dogs', label: 'Dogs' },
+                { key: 'cats', label: 'Cats' },
+                { key: 'birds', label: 'Birds' },
+                { key: 'fish', label: 'Fish' }
+              ].map(({ key, label }) => (
+                <button
+                  key={key}
+                  onClick={() => setSelectedCategory(key)}
+                  className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
+                    selectedCategory === key
+                      ? 'bg-[#c18742] text-white'
+                      : 'bg-gray-100 text-[#795225] hover:bg-gray-200'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-3 gap-4">
+              {randomTips.map((tip) => (
+                <div key={tip.id} className="bg-white rounded-lg p-4 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                  <h3 className="font-semibold text-[#55423c] mb-2 text-sm">{tip.title}</h3>
+                  <p className="text-xs text-gray-600 leading-relaxed">{tip.tip}</p>
+                </div>
+              ))}
+            </div>
+
+            <button
+              onClick={handleRefreshTips}
+              className="flex items-center gap-2 bg-[#ffd68e] text-[#55423c] px-4 py-2 rounded-lg font-medium hover:bg-[#e6c27d] transition-colors mt-4"
+            >
+              <RefreshCw size={16} />
+              Refresh Tips
+            </button>
+          </div>
+        )}
 
         {/* Enhanced Schedules Section */}
         <div className="bg-white rounded-xl mx-4 mb-4 p-4 shadow-sm">
@@ -549,17 +636,31 @@ const Dashboard = () => {
                         <h4 className="text-sm font-medium text-[#c18742] mb-2">Vaccinations</h4>
                         <div className="space-y-2">
                           {pet.vaccinations.map((vaccination) => (
-                            <div key={vaccination.id} className="bg-gray-50 p-3 rounded-lg">
-                              <div className="font-medium text-[#55423c] text-sm">
-                                {vaccination.name}
-                              </div>
-                              <div className="text-xs text-gray-600">
-                                Given: {vaccination.dateGiven}
+                            <div key={vaccination.id} className="bg-gray-50 p-3 rounded-lg flex items-start justify-between">
+                              <div className="flex-1">
+                                <div className="font-medium text-[#55423c] text-sm">
+                                  {vaccination.name}
+                                </div>
+                                <div className="text-xs text-gray-600">
+                                  Given: {vaccination.dateGiven}
+                                </div>
+                                {vaccination.nextDueDate && (
+                                  <div className="text-xs text-[#c18742]">
+                                    Next Due: {vaccination.nextDueDate}
+                                  </div>
+                                )}
                               </div>
                               {vaccination.nextDueDate && (
-                                <div className="text-xs text-[#c18742]">
-                                  Next Due: {vaccination.nextDueDate}
-                                </div>
+                                <button
+                                  onClick={() => handleToggleHealthNotification(pet.id, 'vaccination', vaccination.id)}
+                                  className="flex-shrink-0"
+                                  title={vaccination.notificationsEnabled ? "Notifications on" : "Notifications off"}
+                                >
+                                  <Bell
+                                    size={20}
+                                    className={vaccination.notificationsEnabled ? "text-[#c18742] fill-[#c18742]" : "text-gray-400"}
+                                  />
+                                </button>
                               )}
                             </div>
                           ))}
@@ -573,22 +674,36 @@ const Dashboard = () => {
                         <h4 className="text-sm font-medium text-[#c18742] mb-2">Vet Visits</h4>
                         <div className="space-y-2">
                           {pet.vetVisits.map((visit) => (
-                            <div key={visit.id} className="bg-gray-50 p-3 rounded-lg">
-                              <div className="font-medium text-[#55423c] text-sm">
-                                {visit.reason}
-                              </div>
-                              <div className="text-xs text-gray-600">
-                                Visit Date: {visit.visitDate}
-                              </div>
-                              {visit.diagnosis && (
-                                <div className="text-xs text-gray-600 italic">
-                                  Diagnosis: {visit.diagnosis}
+                            <div key={visit.id} className="bg-gray-50 p-3 rounded-lg flex items-start justify-between">
+                              <div className="flex-1">
+                                <div className="font-medium text-[#55423c] text-sm">
+                                  {visit.reason}
                                 </div>
-                              )}
+                                <div className="text-xs text-gray-600">
+                                  Visit Date: {visit.visitDate}
+                                </div>
+                                {visit.diagnosis && (
+                                  <div className="text-xs text-gray-600 italic">
+                                    Diagnosis: {visit.diagnosis}
+                                  </div>
+                                )}
+                                {visit.nextVisitDate && (
+                                  <div className="text-xs text-[#c18742]">
+                                    Next Visit: {visit.nextVisitDate}
+                                  </div>
+                                )}
+                              </div>
                               {visit.nextVisitDate && (
-                                <div className="text-xs text-[#c18742]">
-                                  Next Visit: {visit.nextVisitDate}
-                                </div>
+                                <button
+                                  onClick={() => handleToggleHealthNotification(pet.id, 'vetVisit', visit.id)}
+                                  className="flex-shrink-0"
+                                  title={visit.notificationsEnabled ? "Notifications on" : "Notifications off"}
+                                >
+                                  <Bell
+                                    size={20}
+                                    className={visit.notificationsEnabled ? "text-[#c18742] fill-[#c18742]" : "text-gray-400"}
+                                  />
+                                </button>
                               )}
                             </div>
                           ))}
@@ -609,21 +724,6 @@ const Dashboard = () => {
             >
               Manage Health Records
             </button>
-          </div>
-        )}
-
-        {/* Pet Care Tips Section - Only visible for Premium Tier 2 subscribers */}
-        {features.hasCareTips && (
-          <div className="bg-white rounded-xl mx-4 mb-4 p-4 shadow-sm">
-            <h2 className="text-lg font-bold text-[#55423c] mb-4">Pet Care Tips</h2>
-            <div className="space-y-4">
-              {petCareTips.map((tip, index) => (
-                <div key={index} className="border-b border-gray-100 pb-4 last:border-b-0 last:pb-0">
-                  <h3 className="font-medium text-[#55423c] mb-2">{tip.title}</h3>
-                  <p className="text-sm text-gray-600">{tip.content}</p>
-                </div>
-              ))}
-            </div>
           </div>
         )}
 
