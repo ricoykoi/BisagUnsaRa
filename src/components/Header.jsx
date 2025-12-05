@@ -1,21 +1,13 @@
-
-import React from 'react';
-import { LogOut } from 'lucide-react';
-import { getAuth, signOut } from 'firebase/auth';
-import { useNavigate } from 'react-router-dom';
+import React from "react";
+import { LogOut } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const Header = () => {
   const navigate = useNavigate();
   const auth = getAuth();
 
   const handleSignOut = () => {
-    signOut(auth)
-      .then(() => {
-        navigate('/login');
-      })
-      .catch((error) => {
-        console.error('Sign out error:', error);
-      });
+    navigate("/login");
   };
 
   return (

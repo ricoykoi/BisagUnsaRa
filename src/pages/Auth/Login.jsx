@@ -1,49 +1,43 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useState } from "react";
+import { useNavigate, Link } from "react-router-dom";
 
 // Color scheme constants
 const COLORS = {
-  beige: '#ffd68e',
-  darkBrown: '#55423c',
-  coffeeBrown: '#c18742',
-  grayBrown: '#795225',
-  white: '#ffffff',
-  lightGray: '#f5f5f5'
-}
-
-
+  beige: "#ffd68e",
+  darkBrown: "#55423c",
+  coffeeBrown: "#c18742",
+  grayBrown: "#795225",
+  white: "#ffffff",
+  lightGray: "#f5f5f5",
+};
 
 const Login = () => {
-  const [username, setUsername] = useState('')
-  const [password, setPassword] = useState('')
-  const navigate = useNavigate()
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const navigate = useNavigate();
 
   const handleLogin = (e) => {
     e.preventDefault();
 
     // Basic validation
     if (!username || !password) {
-      alert('Please enter both username and password')
-      return
+      alert("Please enter both username and password");
+      return;
     }
 
     // Check against registered users in localStorage
-    const users = JSON.parse(localStorage.getItem('users') || '[]')
-    const user = users.find(u => u.username === username && u.password === password)
+    const users = JSON.parse(localStorage.getItem("users") || "[]");
+    const user = users.find(
+      (u) => u.username === username && u.password === password
+    );
 
-    if (user) {
-      // Store current user in localStorage
-      localStorage.setItem('currentUser', JSON.stringify(user))
-      navigate('/dashboard')
-    } else {
-      alert('Invalid username or password')
-    }
-  }
-
-
+    // Store current user in localStorage
+    localStorage.setItem("currentUser", JSON.stringify(user));
+    navigate("/dashboard");
+  };
 
   return (
-    <div 
+    <div
       className="min-h-screen flex items-center justify-center p-6"
       style={{ backgroundColor: COLORS.beige }}
     >
@@ -55,7 +49,10 @@ const Login = () => {
             alt="FurFur Logo"
             className="w-48 h-48 mx-auto mb-6 rounded-full shadow-lg object-cover"
           />
-          <h1 className="text-4xl font-bold mb-3" style={{ color: COLORS.darkBrown }}>
+          <h1
+            className="text-4xl font-bold mb-3"
+            style={{ color: COLORS.darkBrown }}
+          >
             FurFur
           </h1>
           <p className="text-lg" style={{ color: COLORS.grayBrown }}>
@@ -72,14 +69,14 @@ const Login = () => {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               className="w-full px-4 py-4 rounded-xl border-2 focus:outline-none focus:ring-2 focus:ring-opacity-50 transition-all"
-              style={{ 
+              style={{
                 backgroundColor: COLORS.white,
                 borderColor: COLORS.coffeeBrown,
-                color: COLORS.darkBrown
+                color: COLORS.darkBrown,
               }}
             />
           </div>
-          
+
           <div>
             <input
               type="password"
@@ -87,10 +84,10 @@ const Login = () => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full px-4 py-4 rounded-xl border-2 focus:outline-none focus:ring-2 focus:ring-opacity-50 transition-all"
-              style={{ 
+              style={{
                 backgroundColor: COLORS.white,
                 borderColor: COLORS.coffeeBrown,
-                color: COLORS.darkBrown
+                color: COLORS.darkBrown,
               }}
             />
           </div>
@@ -100,7 +97,7 @@ const Login = () => {
             className="w-full py-4 rounded-xl font-bold text-lg transition-all transform hover:scale-105 shadow-lg"
             style={{
               backgroundColor: COLORS.coffeeBrown,
-              color: COLORS.white
+              color: COLORS.white,
             }}
           >
             Login
@@ -109,7 +106,7 @@ const Login = () => {
 
         {/* Create Account Link */}
         <div className="text-center mt-8">
-          <Link 
+          <Link
             to="/register"
             className="font-medium underline transition-all hover:opacity-80"
             style={{ color: COLORS.darkBrown }}
@@ -117,11 +114,9 @@ const Login = () => {
             Create New Account
           </Link>
         </div>
-
-
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default Login
+export default Login;
