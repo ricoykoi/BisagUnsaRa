@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { useNavigate} from 'react-router-dom';
-import { 
-  LogOut, 
-  Home, 
-  PawPrint, 
-  Crown, 
+import { useNavigate } from 'react-router-dom';
+import {
+  LogOut,
+  Home,
+  PawPrint,
+  Crown,
   Download,
   Check,
   Star
@@ -82,20 +82,6 @@ const Plans = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* Header */}
-      <header className="bg-[#55423c] text-white p-4">
-        <div className="flex justify-between items-center">
-          <h1 className="text-xl font-bold">Subscription Plans</h1>
-          <button
-            onClick={handleSignOut}
-            className="flex items-center gap-2 bg-[#ffd68e] text-[#55423c] px-3 py-2 rounded-lg font-medium hover:bg-[#e6c27d] transition-colors"
-          >
-            <LogOut size={16} />
-            Sign Out
-          </button>
-        </div>
-      </header>
-
       {/* Main Content */}
       <main className="flex-1 overflow-y-auto pb-20">
         <div className="p-6">
@@ -117,19 +103,17 @@ const Plans = () => {
             {plans.map((plan) => (
               <div
                 key={plan.id}
-                className={`bg-white rounded-xl p-6 shadow-lg border-2 transition-all duration-200 cursor-pointer ${
-                  selectedPlan === plan.name
-                    ? 'border-[#c18742] shadow-xl'
-                    : 'border-transparent hover:shadow-xl'
-                }`}
+                className={`bg-white rounded-xl p-6 shadow-lg border-2 transition-all duration-200 cursor-pointer ${selectedPlan === plan.name
+                  ? 'border-[#c18742] shadow-xl'
+                  : 'border-transparent hover:shadow-xl'
+                  }`}
                 onClick={() => handleSelectPlan(plan.name)}
               >
                 {/* Plan Header */}
                 <div className="flex justify-between items-center mb-6 pb-4 border-b border-gray-100">
                   <div className="flex items-center gap-3">
-                    <Crown className={`${
-                      plan.name === 'Free Mode' ? 'text-gray-400' : 'text-[#c18742]'
-                    }`} size={24} />
+                    <Crown className={`${plan.name === 'Free Mode' ? 'text-gray-400' : 'text-[#c18742]'
+                      }`} size={24} />
                     <h3 className="text-xl font-bold text-[#55423c]">{plan.displayName}</h3>
                   </div>
                   <div className="text-right">
@@ -166,11 +150,10 @@ const Plans = () => {
           <button
             onClick={handleSubscribe}
             disabled={selectedPlan === currentPlan}
-            className={`w-full py-4 rounded-xl font-bold text-lg mt-8 transition-all duration-200 ${
-              selectedPlan === currentPlan
-                ? 'bg-gray-400 cursor-not-allowed'
-                : 'bg-[#c18742] hover:bg-[#a87338] transform hover:scale-105'
-            }`}
+            className={`w-full py-4 rounded-xl font-bold text-lg mt-8 transition-all duration-200 ${selectedPlan === currentPlan
+              ? 'bg-gray-400 cursor-not-allowed'
+              : 'bg-[#c18742] hover:bg-[#a87338] transform hover:scale-105'
+              }`}
           >
             <span className="text-white">
               {selectedPlan === currentPlan ? 'Current Plan' : 'Subscribe Now'}
@@ -191,7 +174,7 @@ const Plans = () => {
                 <div className="p-3 border-b">Export Feature</div>
                 <div className="p-3">Price</div>
               </div>
-              
+
               {plans.map((plan) => (
                 <div key={plan.id} className="text-center">
                   <div className="p-3 border-b font-medium text-[#55423c] bg-gray-50">
@@ -235,37 +218,6 @@ const Plans = () => {
           </div>
         </div>
       </main>
-
-      {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 h-16">
-        <div className="flex h-full">
-          <button
-            onClick={() => navigateTo('/dashboard')}
-            className="flex-1 flex flex-col items-center justify-center text-[#795225] hover:text-[#55423c] transition-colors"
-          >
-            <Home size={20} />
-            <span className="text-xs mt-1">Home</span>
-          </button>
-          <button
-            onClick={() => navigateTo('/mypets')}
-            className="flex-1 flex flex-col items-center justify-center text-[#795225] hover:text-[#55423c] transition-colors"
-          >
-            <PawPrint size={20} />
-            <span className="text-xs mt-1">Pets</span>
-          </button>
-          <button className="flex-1 flex flex-col items-center justify-center border-t-2 border-[#c18742] text-[#c18742] font-bold">
-            <Crown size={20} />
-            <span className="text-xs mt-1">Plans</span>
-          </button>
-          <button
-            onClick={() => navigateTo('/export')}
-            className="flex-1 flex flex-col items-center justify-center text-[#795225] hover:text-[#55423c] transition-colors"
-          >
-            <Download size={20} />
-            <span className="text-xs mt-1">Export</span>
-          </button>
-        </div>
-      </nav>
     </div>
   );
 };

@@ -1,10 +1,10 @@
 import React, { useState, useRef } from 'react';
-import { useNavigate} from 'react-router-dom';
-import { 
-  LogOut, 
-  Home, 
-  PawPrint, 
-  Crown, 
+import { useNavigate } from 'react-router-dom';
+import {
+  LogOut,
+  Home,
+  PawPrint,
+  Crown,
   Download,
   Plus,
   Edit,
@@ -61,7 +61,7 @@ const MyPets = () => {
   const [scheduleModalVisible, setScheduleModalVisible] = useState(false);
   const [healthRecordsModalVisible, setHealthRecordsModalVisible] = useState(false);
   const [activeTab, setActiveTab] = useState('vaccinations');
-  
+
   const maxPets = features.maxPets;
   const petsRemaining = Math.max(0, maxPets - pets.length);
   const [selectedPet, setSelectedPet] = useState(null);
@@ -80,18 +80,18 @@ const MyPets = () => {
     if (file) {
       const reader = new FileReader();
       reader.onload = (e) => {
-        setNewPet({...newPet, photo: e.target.result});
+        setNewPet({ ...newPet, photo: e.target.result });
       };
       reader.readAsDataURL(file);
     }
   };
-  const [newSchedule, setNewSchedule] = useState({ 
-    type: 'Feeding', 
-    hour: '8', 
-    minute: '00', 
-    ampm: 'AM', 
-    frequency: 'Daily', 
-    notes: '' 
+  const [newSchedule, setNewSchedule] = useState({
+    type: 'Feeding',
+    hour: '8',
+    minute: '00',
+    ampm: 'AM',
+    frequency: 'Daily',
+    notes: ''
   });
   const [editScheduleMode, setEditScheduleMode] = useState(false);
   const [selectedSchedule, setSelectedSchedule] = useState(null);
@@ -170,10 +170,10 @@ const MyPets = () => {
         alert(`Your ${currentPlan} allows a maximum of ${maxPets} pets. Please upgrade your plan to add more pets.`);
         return;
       }
-      
+
       if (editMode && selectedPet) {
-        const updatedPets = pets.map(pet => 
-          pet.id === selectedPet.id 
+        const updatedPets = pets.map(pet =>
+          pet.id === selectedPet.id
             ? { ...pet, ...newPet }
             : pet
         );
@@ -188,7 +188,7 @@ const MyPets = () => {
         };
         savePets([...pets, newPetObj]);
       }
-      
+
       setNewPet({ name: '', type: '', breed: '', age: '', photo: null });
       setModalVisible(false);
       setEditMode(false);
@@ -222,13 +222,13 @@ const MyPets = () => {
     setSelectedPet(pet);
     setEditScheduleMode(false);
     setSelectedSchedule(null);
-    setNewSchedule({ 
-      type: 'Feeding', 
-      hour: '8', 
-      minute: '00', 
-      ampm: 'AM', 
-      frequency: 'Daily', 
-      notes: '' 
+    setNewSchedule({
+      type: 'Feeding',
+      hour: '8',
+      minute: '00',
+      ampm: 'AM',
+      frequency: 'Daily',
+      notes: ''
     });
     setScheduleModalVisible(true);
   };
@@ -276,7 +276,7 @@ const MyPets = () => {
       setEditScheduleMode(false);
       setSelectedSchedule(null);
       setScheduleModalVisible(false);
-      
+
       // Show info message about schedule display
       alert('Schedule ' + (editScheduleMode ? 'updated' : 'added') + ' successfully!\n\nNote: Today\'s scheduled items will only appear in the Dashboard');
     }
@@ -285,7 +285,7 @@ const MyPets = () => {
   const handleEditSchedule = (pet, schedule) => {
     setSelectedPet(pet);
     setSelectedSchedule(schedule);
-    
+
     const timeParts = schedule.time.match(/(\d+):(\d+)\s*(AM|PM)/i);
     if (timeParts) {
       setNewSchedule({
@@ -297,15 +297,15 @@ const MyPets = () => {
         notes: schedule.notes || ''
       });
     }
-    
+
     setEditScheduleMode(true);
     setScheduleModalVisible(true);
   };
 
   const handleDeleteSchedule = (pet, scheduleId) => {
     if (confirm("Are you sure you want to delete this schedule?")) {
-      const updatedPets = pets.map(p => 
-        p.id === pet.id 
+      const updatedPets = pets.map(p =>
+        p.id === pet.id
           ? { ...p, schedules: p.schedules.filter(s => s.id !== scheduleId) }
           : p
       );
@@ -413,7 +413,7 @@ const MyPets = () => {
       if (pet.id === selectedPet.id) {
         if (editHealthRecordMode) {
           const updatedVetVisits = pet.vetVisits.map(visit =>
-            visit.id === selectedHealthRecord.id 
+            visit.id === selectedHealthRecord.id
               ? { ...newVetVisit, id: selectedHealthRecord.id }
               : visit
           );
@@ -475,20 +475,6 @@ const MyPets = () => {
 
   return (
     <div className="min-h-screen bg-white flex flex-col">
-      {/* Header */}
-      <header className="bg-[#55423c] text-white p-4">
-        <div className="flex justify-between items-center">
-          <h1 className="text-xl font-bold">My Pets</h1>
-          <button
-            onClick={handleSignOut}
-            className="flex items-center gap-2 bg-[#ffd68e] text-[#55423c] px-3 py-2 rounded-lg font-medium hover:bg-[#e6c27d] transition-colors"
-          >
-            <LogOut size={16} />
-            Sign Out
-          </button>
-        </div>
-      </header>
-
       {/* Main Content */}
       <main className="flex-1 overflow-y-auto pb-20">
         {/* Pet Slots Information */}
@@ -629,38 +615,6 @@ const MyPets = () => {
           </button>
         </div>
       </main>
-
-      {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 h-16">
-        <div className="flex h-full">
-          <button
-            onClick={() => navigateTo('/dashboard')}
-            className="flex-1 flex flex-col items-center justify-center text-[#795225] hover:text-[#55423c] transition-colors"
-          >
-            <Home size={20} />
-            <span className="text-xs mt-1">Home</span>
-          </button>
-          <button className="flex-1 flex flex-col items-center justify-center border-t-2 border-[#c18742] text-[#c18742] font-bold">
-            <PawPrint size={20} />
-            <span className="text-xs mt-1">Pets</span>
-          </button>
-          <button
-            onClick={() => navigateTo('/plans')}
-            className="flex-1 flex flex-col items-center justify-center text-[#795225] hover:text-[#55423c] transition-colors"
-          >
-            <Crown size={20} />
-            <span className="text-xs mt-1">Plans</span>
-          </button>
-          <button
-            onClick={() => navigateTo('/export')}
-            className="flex-1 flex flex-col items-center justify-center text-[#795225] hover:text-[#55423c] transition-colors"
-          >
-            <Download size={20} />
-            <span className="text-xs mt-1">Export</span>
-          </button>
-        </div>
-      </nav>
-
       {/* Add/Edit Pet Modal */}
       {modalVisible && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -669,36 +623,36 @@ const MyPets = () => {
               <h2 className="text-xl font-bold text-[#55423c] mb-4 text-center">
                 {editMode ? 'Edit Pet' : 'Add New Pet'}
               </h2>
-              
+
               <input
                 type="text"
                 placeholder="Pet Name*"
                 value={newPet.name}
-                onChange={(e) => setNewPet({...newPet, name: e.target.value})}
+                onChange={(e) => setNewPet({ ...newPet, name: e.target.value })}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-[#c18742]"
               />
-              
+
               <input
                 type="text"
                 placeholder="Pet Type (e.g., Dog, Cat)*"
                 value={newPet.type}
-                onChange={(e) => setNewPet({...newPet, type: e.target.value})}
+                onChange={(e) => setNewPet({ ...newPet, type: e.target.value })}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-[#c18742]"
               />
-              
+
               <input
                 type="text"
                 placeholder="Breed (optional)"
                 value={newPet.breed}
-                onChange={(e) => setNewPet({...newPet, breed: e.target.value})}
+                onChange={(e) => setNewPet({ ...newPet, breed: e.target.value })}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-[#c18742]"
               />
-              
+
               <input
                 type="text"
                 placeholder="Age*"
                 value={newPet.age}
-                onChange={(e) => setNewPet({...newPet, age: e.target.value})}
+                onChange={(e) => setNewPet({ ...newPet, age: e.target.value })}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-[#c18742]"
               />
 
@@ -727,7 +681,7 @@ const MyPets = () => {
                 >
                   Cancel
                 </button>
-                
+
                 {editMode && (
                   <button
                     onClick={() => {
@@ -739,7 +693,7 @@ const MyPets = () => {
                     Delete
                   </button>
                 )}
-                
+
                 <button
                   onClick={handleAddPet}
                   className="flex-1 bg-[#c18742] text-white py-2 rounded-lg font-medium hover:bg-[#a87338] transition-colors"
@@ -760,24 +714,24 @@ const MyPets = () => {
               <h2 className="text-xl font-bold text-[#55423c] mb-4 text-center">
                 {editScheduleMode ? 'Edit Schedule' : 'Add New Schedule'}
               </h2>
-              
+
               <input
                 type="text"
                 placeholder="Schedule Type (e.g., Feeding, Medication)*"
                 value={newSchedule.type}
-                onChange={(e) => setNewSchedule({...newSchedule, type: e.target.value})}
+                onChange={(e) => setNewSchedule({ ...newSchedule, type: e.target.value })}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-[#c18742]"
               />
-              
+
               <div className="grid grid-cols-3 gap-2 mb-3">
                 <div>
                   <label className="block text-sm text-gray-600 mb-1">Hour</label>
                   <select
                     value={newSchedule.hour}
-                    onChange={(e) => setNewSchedule({...newSchedule, hour: e.target.value})}
+                    onChange={(e) => setNewSchedule({ ...newSchedule, hour: e.target.value })}
                     className="w-full border border-gray-300 rounded-lg px-2 py-2 focus:outline-none focus:ring-2 focus:ring-[#c18742]"
                   >
-                    {Array.from({length: 12}, (_, i) => i + 1).map(hour => (
+                    {Array.from({ length: 12 }, (_, i) => i + 1).map(hour => (
                       <option key={hour} value={hour}>{hour}</option>
                     ))}
                   </select>
@@ -786,7 +740,7 @@ const MyPets = () => {
                   <label className="block text-sm text-gray-600 mb-1">Minute</label>
                   <select
                     value={newSchedule.minute}
-                    onChange={(e) => setNewSchedule({...newSchedule, minute: e.target.value})}
+                    onChange={(e) => setNewSchedule({ ...newSchedule, minute: e.target.value })}
                     className="w-full border border-gray-300 rounded-lg px-2 py-2 focus:outline-none focus:ring-2 focus:ring-[#c18742]"
                   >
                     {['00', '15', '30', '45'].map(minute => (
@@ -798,7 +752,7 @@ const MyPets = () => {
                   <label className="block text-sm text-gray-600 mb-1">AM/PM</label>
                   <select
                     value={newSchedule.ampm}
-                    onChange={(e) => setNewSchedule({...newSchedule, ampm: e.target.value})}
+                    onChange={(e) => setNewSchedule({ ...newSchedule, ampm: e.target.value })}
                     className="w-full border border-gray-300 rounded-lg px-2 py-2 focus:outline-none focus:ring-2 focus:ring-[#c18742]"
                   >
                     <option value="AM">AM</option>
@@ -806,12 +760,12 @@ const MyPets = () => {
                   </select>
                 </div>
               </div>
-              
+
               <div className="mb-3">
                 <label className="block text-sm text-gray-600 mb-1">Frequency</label>
                 <select
                   value={newSchedule.frequency}
-                  onChange={(e) => setNewSchedule({...newSchedule, frequency: e.target.value})}
+                  onChange={(e) => setNewSchedule({ ...newSchedule, frequency: e.target.value })}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#c18742]"
                 >
                   <option value="Daily">Daily</option>
@@ -819,15 +773,15 @@ const MyPets = () => {
                   <option value="Monthly">Monthly</option>
                 </select>
               </div>
-              
+
               <textarea
                 placeholder="Notes (optional)"
                 value={newSchedule.notes}
-                onChange={(e) => setNewSchedule({...newSchedule, notes: e.target.value})}
+                onChange={(e) => setNewSchedule({ ...newSchedule, notes: e.target.value })}
                 rows={3}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-[#c18742] resize-none"
               />
-              
+
               <div className="flex space-x-2">
                 <button
                   onClick={() => {
@@ -839,7 +793,7 @@ const MyPets = () => {
                 >
                   Cancel
                 </button>
-                
+
                 {editScheduleMode && (
                   <button
                     onClick={() => {
@@ -851,7 +805,7 @@ const MyPets = () => {
                     Delete
                   </button>
                 )}
-                
+
                 <button
                   onClick={handleAddSchedule}
                   className="flex-1 bg-[#c18742] text-white py-2 rounded-lg font-medium hover:bg-[#a87338] transition-colors"
@@ -887,21 +841,19 @@ const MyPets = () => {
               <div className="flex border-b border-gray-200 mb-4">
                 <button
                   onClick={() => setActiveTab('vaccinations')}
-                  className={`flex-1 py-3 text-center font-medium ${
-                    activeTab === 'vaccinations'
-                      ? 'border-b-2 border-[#c18742] text-[#c18742]'
-                      : 'text-gray-500'
-                  }`}
+                  className={`flex-1 py-3 text-center font-medium ${activeTab === 'vaccinations'
+                    ? 'border-b-2 border-[#c18742] text-[#c18742]'
+                    : 'text-gray-500'
+                    }`}
                 >
                   Vaccinations
                 </button>
                 <button
                   onClick={() => setActiveTab('vetVisits')}
-                  className={`flex-1 py-3 text-center font-medium ${
-                    activeTab === 'vetVisits'
-                      ? 'border-b-2 border-[#c18742] text-[#c18742]'
-                      : 'text-gray-500'
-                  }`}
+                  className={`flex-1 py-3 text-center font-medium ${activeTab === 'vetVisits'
+                    ? 'border-b-2 border-[#c18742] text-[#c18742]'
+                    : 'text-gray-500'
+                    }`}
                 >
                   Vet Visits
                 </button>
@@ -918,34 +870,34 @@ const MyPets = () => {
                     type="text"
                     placeholder="Vaccination Name*"
                     value={newVaccination.name}
-                    onChange={(e) => setNewVaccination({...newVaccination, name: e.target.value})}
+                    onChange={(e) => setNewVaccination({ ...newVaccination, name: e.target.value })}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-[#c18742]"
                   />
 
                   <DateInput
                     label="Date Given*"
                     dateValue={newVaccination.dateGiven}
-                    onDateChange={(value) => setNewVaccination({...newVaccination, dateGiven: value})}
+                    onDateChange={(value) => setNewVaccination({ ...newVaccination, dateGiven: value })}
                   />
 
                   <DateInput
                     label="Next Due Date"
                     dateValue={newVaccination.nextDueDate}
-                    onDateChange={(value) => setNewVaccination({...newVaccination, nextDueDate: value})}
+                    onDateChange={(value) => setNewVaccination({ ...newVaccination, nextDueDate: value })}
                   />
 
                   <input
                     type="text"
                     placeholder="Veterinarian"
                     value={newVaccination.veterinarian}
-                    onChange={(e) => setNewVaccination({...newVaccination, veterinarian: e.target.value})}
+                    onChange={(e) => setNewVaccination({ ...newVaccination, veterinarian: e.target.value })}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-[#c18742]"
                   />
 
                   <textarea
                     placeholder="Notes"
                     value={newVaccination.notes}
-                    onChange={(e) => setNewVaccination({...newVaccination, notes: e.target.value})}
+                    onChange={(e) => setNewVaccination({ ...newVaccination, notes: e.target.value })}
                     rows={3}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-[#c18742] resize-none"
                   />
@@ -962,14 +914,14 @@ const MyPets = () => {
                   <DateInput
                     label="Visit Date*"
                     dateValue={newVetVisit.visitDate}
-                    onDateChange={(value) => setNewVetVisit({...newVetVisit, visitDate: value})}
+                    onDateChange={(value) => setNewVetVisit({ ...newVetVisit, visitDate: value })}
                   />
 
                   <input
                     type="text"
                     placeholder="Reason for Visit*"
                     value={newVetVisit.reason}
-                    onChange={(e) => setNewVetVisit({...newVetVisit, reason: e.target.value})}
+                    onChange={(e) => setNewVetVisit({ ...newVetVisit, reason: e.target.value })}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-[#c18742]"
                   />
 
@@ -977,21 +929,21 @@ const MyPets = () => {
                     type="text"
                     placeholder="Veterinarian"
                     value={newVetVisit.veterinarian}
-                    onChange={(e) => setNewVetVisit({...newVetVisit, veterinarian: e.target.value})}
+                    onChange={(e) => setNewVetVisit({ ...newVetVisit, veterinarian: e.target.value })}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-[#c18742]"
                   />
 
                   <DateInput
                     label="Next Visit Date"
                     dateValue={newVetVisit.nextVisitDate}
-                    onDateChange={(value) => setNewVetVisit({...newVetVisit, nextVisitDate: value})}
+                    onDateChange={(value) => setNewVetVisit({ ...newVetVisit, nextVisitDate: value })}
                   />
 
                   <input
                     type="text"
                     placeholder="Diagnosis"
                     value={newVetVisit.diagnosis}
-                    onChange={(e) => setNewVetVisit({...newVetVisit, diagnosis: e.target.value})}
+                    onChange={(e) => setNewVetVisit({ ...newVetVisit, diagnosis: e.target.value })}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-[#c18742]"
                   />
 
@@ -999,14 +951,14 @@ const MyPets = () => {
                     type="text"
                     placeholder="Treatment"
                     value={newVetVisit.treatment}
-                    onChange={(e) => setNewVetVisit({...newVetVisit, treatment: e.target.value})}
+                    onChange={(e) => setNewVetVisit({ ...newVetVisit, treatment: e.target.value })}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-[#c18742]"
                   />
 
                   <textarea
                     placeholder="Notes"
                     value={newVetVisit.notes}
-                    onChange={(e) => setNewVetVisit({...newVetVisit, notes: e.target.value})}
+                    onChange={(e) => setNewVetVisit({ ...newVetVisit, notes: e.target.value })}
                     rows={3}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-[#c18742] resize-none"
                   />

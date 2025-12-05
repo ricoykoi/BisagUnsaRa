@@ -1,10 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  LogOut, 
-  Home, 
-  PawPrint, 
-  Crown, 
+import {
+  LogOut,
+  Home,
+  PawPrint,
+  Crown,
   Download,
   Check,
   X,
@@ -28,13 +28,13 @@ const parseTimeToMinutes = (timeString) => {
   const [time, period] = timeString.split(' ');
   const [hours, minutes] = time.split(':').map(Number);
   let totalMinutes = hours * 60 + minutes;
-  
+
   if (period === 'PM' && hours !== 12) {
     totalMinutes += 12 * 60;
   } else if (period === 'AM' && hours === 12) {
     totalMinutes -= 12 * 60;
   }
-  
+
   return totalMinutes;
 };
 
@@ -118,7 +118,7 @@ const Export = () => {
   }, []);
 
   // Generate all schedules from pets (same as dashboard)
-  const allSchedules = useMemo(() => 
+  const allSchedules = useMemo(() =>
     pets.flatMap(pet =>
       (pet.schedules || []).map(schedule => ({
         ...schedule,
@@ -135,7 +135,7 @@ const Export = () => {
     const generated = generateRecurringSchedules(allSchedules, 30);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     const upcoming = generated.filter(s => s.date >= today);
     const todayScheds = upcoming.filter(s => {
       const scheduleDate = new Date(s.date);
@@ -143,7 +143,7 @@ const Export = () => {
       return scheduleDate.getTime() === today.getTime();
     }).sort((a, b) => parseTimeToMinutes(a.time) - parseTimeToMinutes(b.time));
 
-    return { 
+    return {
       todayDate: today,
       upcomingSchedules: upcoming,
       todaySchedules: todayScheds
@@ -193,17 +193,17 @@ const Export = () => {
   const generatePDF = () => {
     return new Promise((resolve) => {
       const doc = new jsPDF();
-      
+
       // Add title and header
       doc.setFontSize(20);
       doc.setTextColor(85, 66, 60);
       doc.text('Pet Care Export Summary', 14, 15);
-      
+
       doc.setFontSize(10);
       doc.setTextColor(121, 82, 37);
       doc.text(`Exported on: ${new Date().toLocaleDateString()}`, 14, 25);
       doc.text(`Current Plan: ${currentPlan}`, 14, 32);
-      
+
       let yPosition = 45;
 
       // Add summary statistics
@@ -307,7 +307,7 @@ const Export = () => {
   const generateCSV = () => {
     return new Promise((resolve) => {
       let csvContent = 'Pet Care Export Summary\n\n';
-      
+
       // Summary section
       csvContent += 'SUMMARY STATISTICS\n';
       csvContent += `Total Pets,${pets.length}\n`;
@@ -317,7 +317,7 @@ const Export = () => {
       csvContent += `Upcoming Tasks,${upcomingSchedules.length}\n`;
       csvContent += `Export Date,${new Date().toLocaleDateString()}\n`;
       csvContent += `Current Plan,${currentPlan}\n\n`;
-      
+
       // Pets section
       csvContent += 'PET PROFILES\n';
       csvContent += 'Name,Type,Breed,Age,Number of Schedules\n';
@@ -325,7 +325,7 @@ const Export = () => {
         csvContent += `${pet.name},${pet.type},${pet.breed},${pet.age},${(pet.schedules || []).length}\n`;
       });
       csvContent += '\n';
-      
+
       // Today's schedules
       csvContent += "TODAY'S SCHEDULES\n";
       csvContent += 'Time,Type,Pet,Status,Notes\n';
@@ -333,14 +333,14 @@ const Export = () => {
         csvContent += `${schedule.time},${schedule.type},${schedule.petName},${schedule.isCompleted ? 'Completed' : 'Pending'},"${schedule.notes || ''}"\n`;
       });
       csvContent += '\n';
-      
+
       // Upcoming schedules
       csvContent += 'UPCOMING SCHEDULES\n';
       csvContent += 'Date,Time,Type,Pet,Frequency,Notes\n';
       upcomingSchedules.forEach(schedule => {
         csvContent += `${formatDate(schedule.date)},${schedule.time},${schedule.type},${schedule.petName},${schedule.frequency},"${schedule.notes || ''}"\n`;
       });
-      
+
       // Create and download CSV file
       const blob = new Blob([csvContent], { type: 'text/csv' });
       const url = window.URL.createObjectURL(blob);
@@ -355,20 +355,6 @@ const Export = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* Header */}
-      <header className="bg-[#55423c] text-white p-4">
-        <div className="flex justify-between items-center">
-          <h1 className="text-xl font-bold">Export Data</h1>
-          <button
-            onClick={handleSignOut}
-            className="flex items-center gap-2 bg-[#ffd68e] text-[#55423c] px-3 py-2 rounded-lg font-medium hover:bg-[#e6c27d] transition-colors"
-          >
-            <LogOut size={16} />
-            Sign Out
-          </button>
-        </div>
-      </header>
-
       {/* Main Content */}
       <main className="flex-1 overflow-y-auto pb-20">
         {/* Summary Stats */}
@@ -395,22 +381,20 @@ const Export = () => {
         <div className="bg-white rounded-xl mx-4 p-4 mb-4 shadow-sm">
           <h3 className="text-lg font-bold text-[#55423c] mb-3">Export Format</h3>
           <div className="flex gap-2">
-            <button 
-              className={`flex-1 px-4 py-3 rounded-lg font-medium transition-colors ${
-                exportFormat === 'pdf' 
-                  ? 'bg-[#c18742] text-white' 
-                  : 'bg-gray-100 text-[#795225] hover:bg-gray-200'
-              }`}
+            <button
+              className={`flex-1 px-4 py-3 rounded-lg font-medium transition-colors ${exportFormat === 'pdf'
+                ? 'bg-[#c18742] text-white'
+                : 'bg-gray-100 text-[#795225] hover:bg-gray-200'
+                }`}
               onClick={() => setExportFormat('pdf')}
             >
               PDF Document
             </button>
-            <button 
-              className={`flex-1 px-4 py-3 rounded-lg font-medium transition-colors ${
-                exportFormat === 'csv' 
-                  ? 'bg-[#c18742] text-white' 
-                  : 'bg-gray-100 text-[#795225] hover:bg-gray-200'
-              }`}
+            <button
+              className={`flex-1 px-4 py-3 rounded-lg font-medium transition-colors ${exportFormat === 'csv'
+                ? 'bg-[#c18742] text-white'
+                : 'bg-gray-100 text-[#795225] hover:bg-gray-200'
+                }`}
               onClick={() => setExportFormat('csv')}
             >
               CSV Spreadsheet
@@ -428,7 +412,7 @@ const Export = () => {
               <Calendar size={18} />
               Today's Schedule Record
             </h3>
-            
+
             {todaySchedules.length > 0 ? (
               <div className="space-y-3">
                 {todaySchedules.map((schedule) => (
@@ -440,11 +424,11 @@ const Export = () => {
                         <Circle className="text-gray-400" size={20} />
                       )}
                     </div>
-                    
+
                     <div className="bg-[#ffd68e] px-3 py-1 rounded-full text-xs font-medium text-[#55423c] min-w-[80px] text-center">
                       Today
                     </div>
-                    
+
                     <div className="flex-1 flex items-center justify-between">
                       <div className="flex-1">
                         <div className="font-semibold text-[#55423c] text-sm">
@@ -479,7 +463,7 @@ const Export = () => {
               <Clock size={18} />
               Upcoming Schedule Record (Next 30 Days)
             </h3>
-            
+
             {upcomingSchedules.filter(s => {
               const scheduleDate = new Date(s.date);
               scheduleDate.setHours(0, 0, 0, 0);
@@ -494,47 +478,47 @@ const Export = () => {
                   })
                   .slice(0, 20)
                   .map((schedule) => (
-                  <div key={schedule.id} className="flex items-center gap-4 p-4 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors">
-                    <div className="bg-[#ffd68e] px-3 py-1 rounded-full text-xs font-medium text-[#55423c] min-w-[80px] text-center">
-                      {formatDate(schedule.date)}
-                    </div>
-                    
-                    <div className="flex-1 flex items-center justify-between">
-                      <div className="flex-1">
-                        <div className="font-semibold text-[#55423c] text-sm">
-                          {schedule.time}
-                        </div>
-                        <div className="text-xs text-gray-600">
-                          <span className="font-medium">{schedule.type}</span> • {schedule.petName}
-                        </div>
-                        <div className="text-xs text-[#c18742] italic">
-                          {schedule.frequency}
-                        </div>
-                        {schedule.notes && (
-                          <div className="text-xs text-gray-500 italic mt-1">
-                            {schedule.notes}
+                    <div key={schedule.id} className="flex items-center gap-4 p-4 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors">
+                      <div className="bg-[#ffd68e] px-3 py-1 rounded-full text-xs font-medium text-[#55423c] min-w-[80px] text-center">
+                        {formatDate(schedule.date)}
+                      </div>
+
+                      <div className="flex-1 flex items-center justify-between">
+                        <div className="flex-1">
+                          <div className="font-semibold text-[#55423c] text-sm">
+                            {schedule.time}
                           </div>
+                          <div className="text-xs text-gray-600">
+                            <span className="font-medium">{schedule.type}</span> • {schedule.petName}
+                          </div>
+                          <div className="text-xs text-[#c18742] italic">
+                            {schedule.frequency}
+                          </div>
+                          {schedule.notes && (
+                            <div className="text-xs text-gray-500 italic mt-1">
+                              {schedule.notes}
+                            </div>
+                          )}
+                        </div>
+                        {schedule.notificationsEnabled && (
+                          <Bell className="text-[#c18742] fill-[#c18742]" size={16} />
                         )}
                       </div>
-                      {schedule.notificationsEnabled && (
-                        <Bell className="text-[#c18742] fill-[#c18742]" size={16} />
-                      )}
                     </div>
-                  </div>
-                ))}
+                  ))}
                 {upcomingSchedules.filter(s => {
                   const scheduleDate = new Date(s.date);
                   scheduleDate.setHours(0, 0, 0, 0);
                   return scheduleDate.getTime() > todayDate.getTime();
                 }).length > 20 && (
-                  <div className="text-center py-2 text-sm text-gray-500 italic">
-                    ... and {upcomingSchedules.filter(s => {
-                      const scheduleDate = new Date(s.date);
-                      scheduleDate.setHours(0, 0, 0, 0);
-                      return scheduleDate.getTime() > todayDate.getTime();
-                    }).length - 20} more schedules
-                  </div>
-                )}
+                    <div className="text-center py-2 text-sm text-gray-500 italic">
+                      ... and {upcomingSchedules.filter(s => {
+                        const scheduleDate = new Date(s.date);
+                        scheduleDate.setHours(0, 0, 0, 0);
+                        return scheduleDate.getTime() > todayDate.getTime();
+                      }).length - 20} more schedules
+                    </div>
+                  )}
               </div>
             ) : (
               <div className="text-center py-6 text-gray-500 italic bg-gray-50 rounded-lg">
@@ -549,9 +533,8 @@ const Export = () => {
               <button
                 onClick={handleExport}
                 disabled={isExporting || pets.length === 0}
-                className={`w-full ${
-                  isExporting || pets.length === 0 ? 'bg-gray-400' : 'bg-[#c18742] hover:bg-[#a87338]'
-                } text-white py-4 rounded-xl font-bold text-lg transition-colors flex items-center justify-center gap-3`}
+                className={`w-full ${isExporting || pets.length === 0 ? 'bg-gray-400' : 'bg-[#c18742] hover:bg-[#a87338]'
+                  } text-white py-4 rounded-xl font-bold text-lg transition-colors flex items-center justify-center gap-3`}
               >
                 {isExporting ? (
                   <>

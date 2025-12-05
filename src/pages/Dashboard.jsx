@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { useNavigate} from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   LogOut,
   Home,
@@ -27,13 +27,13 @@ const parseTimeToMinutes = (timeString) => {
   const [time, period] = timeString.split(' ');
   const [hours, minutes] = time.split(':').map(Number);
   let totalMinutes = hours * 60 + minutes;
-  
+
   if (period === 'PM' && hours !== 12) {
     totalMinutes += 12 * 60;
   } else if (period === 'AM' && hours === 12) {
     totalMinutes -= 12 * 60;
   }
-  
+
   return totalMinutes;
 };
 
@@ -68,7 +68,7 @@ const generateRecurringSchedules = (baseSchedules) => {
     } else if (schedule.frequency === 'Weekly') {
       // Generate weekly for exactly 30 days (1 month)
       const thirtyDaysMs = 30 * msInDay;
-      
+
       // Always include today's instance
       addInstance(today);
 
@@ -87,7 +87,7 @@ const generateRecurringSchedules = (baseSchedules) => {
     } else if (schedule.frequency === 'Monthly') {
       // Generate monthly for 31 days so second monthly occurrence appears
       const thirtyOneDaysMs = 31 * msInDay;
-      
+
       // Always include today's instance
       addInstance(today);
 
@@ -147,7 +147,7 @@ const Dashboard = () => {
   const handleRefreshTips = () => {
     setRefreshKey(prev => prev + 1);
   };
-  
+
   // Load pets from localStorage or use empty array
   const [pets, setPets] = useState(() => {
     const saved = localStorage.getItem('pets');
@@ -230,12 +230,12 @@ const Dashboard = () => {
       }
       return pet;
     });
-    
+
     setPets(updatedPets);
     localStorage.setItem('pets', JSON.stringify(updatedPets));
     setEditModalVisible(false);
     setEditingSchedule(null);
-    
+
     // Refresh upcoming schedules
     const newAllSchedules = updatedPets.flatMap(pet =>
       (pet.schedules || []).map(schedule => ({
@@ -284,8 +284,8 @@ const Dashboard = () => {
     }
 
     // Toggle completion status
-    const updatedSchedules = upcomingSchedules.map(schedule => 
-      schedule.id === scheduleId 
+    const updatedSchedules = upcomingSchedules.map(schedule =>
+      schedule.id === scheduleId
         ? { ...schedule, isCompleted: !schedule.isCompleted }
         : schedule
     );
@@ -376,20 +376,6 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* Header */}
-      <header className="bg-[#55423c] text-white p-4">
-        <div className="flex justify-between items-center">
-          <h1 className="text-xl font-bold">Dashboard</h1>
-          <button
-            onClick={handleSignOut}
-            className="flex items-center gap-2 bg-[#ffd68e] text-[#55423c] px-3 py-2 rounded-lg font-medium hover:bg-[#e6c27d] transition-colors"
-          >
-            <LogOut size={16} />
-            Sign Out
-          </button>
-        </div>
-      </header>
-
       {/* Main Content */}
       <main className="flex-1 overflow-y-auto pb-20">
         {/* Summary Section */}
@@ -455,11 +441,10 @@ const Dashboard = () => {
                 <button
                   key={key}
                   onClick={() => setSelectedCategory(key)}
-                  className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
-                    selectedCategory === key
-                      ? 'bg-[#c18742] text-white'
-                      : 'bg-gray-100 text-[#795225] hover:bg-gray-200'
-                  }`}
+                  className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${selectedCategory === key
+                    ? 'bg-[#c18742] text-white'
+                    : 'bg-gray-100 text-[#795225] hover:bg-gray-200'
+                    }`}
                 >
                   {label}
                 </button>
@@ -492,31 +477,28 @@ const Dashboard = () => {
             <div className="flex bg-gray-100 rounded-full p-1">
               <button
                 onClick={() => setScheduleView('today')}
-                className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
-                  scheduleView === 'today'
-                    ? 'bg-[#c18742] text-white'
-                    : 'text-[#795225] hover:text-[#55423c]'
-                }`}
+                className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${scheduleView === 'today'
+                  ? 'bg-[#c18742] text-white'
+                  : 'text-[#795225] hover:text-[#55423c]'
+                  }`}
               >
                 Today
               </button>
               <button
                 onClick={() => setScheduleView('upcoming')}
-                className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
-                  scheduleView === 'upcoming'
-                    ? 'bg-[#c18742] text-white'
-                    : 'text-[#795225] hover:text-[#55423c]'
-                }`}
+                className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${scheduleView === 'upcoming'
+                  ? 'bg-[#c18742] text-white'
+                  : 'text-[#795225] hover:text-[#55423c]'
+                  }`}
               >
                 Upcoming
               </button>
               <button
                 onClick={() => setScheduleView('past')}
-                className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
-                  scheduleView === 'past'
-                    ? 'bg-[#c18742] text-white'
-                    : 'text-[#795225] hover:text-[#55423c]'
-                }`}
+                className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${scheduleView === 'past'
+                  ? 'bg-[#c18742] text-white'
+                  : 'text-[#795225] hover:text-[#55423c]'
+                  }`}
               >
                 Past
               </button>
@@ -547,13 +529,13 @@ const Dashboard = () => {
                         <div className="font-semibold text-[#55423c] text-sm">{schedule.time}</div>
                         <div className="text-xs text-gray-600"><span className="font-medium">{schedule.type}</span> • {schedule.petName}</div>
                       </div>
-                      <button 
-                        onClick={() => handleToggleNotification(schedule)} 
+                      <button
+                        onClick={() => handleToggleNotification(schedule)}
                         className="flex-shrink-0"
                         title={schedule.notificationsEnabled ? "Notifications on" : "Notifications off"}
                       >
-                        <Bell 
-                          size={20} 
+                        <Bell
+                          size={20}
                           className={schedule.notificationsEnabled ? "text-[#c18742] fill-[#c18742]" : "text-gray-400"}
                         />
                       </button>
@@ -634,7 +616,7 @@ const Dashboard = () => {
                 {pets.map((pet) => (
                   <div key={pet.id} className="border-b border-gray-100 pb-4 last:border-b-0 last:pb-0">
                     <h3 className="font-bold text-[#55423c] mb-2">{pet.name}</h3>
-                    
+
                     {/* Vaccinations */}
                     {pet.vaccinations && pet.vaccinations.length > 0 && (
                       <div className="ml-2 mb-3">
@@ -672,7 +654,7 @@ const Dashboard = () => {
                         </div>
                       </div>
                     )}
-                    
+
                     {/* Vet Visits */}
                     {pet.vetVisits && pet.vetVisits.length > 0 && (
                       <div className="ml-2">
@@ -749,65 +731,34 @@ const Dashboard = () => {
         )}
       </main>
 
-      {/* Bottom Navigation Bar */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 h-16">
-        <div className="flex h-full">
-          <button className="flex-1 flex flex-col items-center justify-center border-t-2 border-[#c18742] text-[#c18742] font-bold">
-            <Home size={20} />
-            <span className="text-xs mt-1">Home</span>
-          </button>
-          <button
-            onClick={() => navigateTo('/mypets')}
-            className="flex-1 flex flex-col items-center justify-center text-[#795225] hover:text-[#55423c] transition-colors"
-          >
-            <PawPrint size={20} />
-            <span className="text-xs mt-1">Pets</span>
-          </button>
-          <button
-            onClick={() => navigateTo('/plans')}
-            className="flex-1 flex flex-col items-center justify-center text-[#795225] hover:text-[#55423c] transition-colors"
-          >
-            <Crown size={20} />
-            <span className="text-xs mt-1">Plans</span>
-          </button>
-          <button
-            onClick={() => navigateTo('/export')}
-            className="flex-1 flex flex-col items-center justify-center text-[#795225] hover:text-[#55423c] transition-colors"
-          >
-            <Download size={20} />
-            <span className="text-xs mt-1">Export</span>
-          </button>
-        </div>
-      </nav>
-
       {/* Edit Schedule Modal */}
       {editModalVisible && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl w-full max-w-md">
             <div className="p-6">
               <h2 className="text-xl font-bold text-[#55423c] mb-4">Edit Schedule</h2>
-              
+
               <input
                 type="text"
                 placeholder="Schedule Type"
                 value={editFormData.type}
-                onChange={(e) => setEditFormData({...editFormData, type: e.target.value})}
+                onChange={(e) => setEditFormData({ ...editFormData, type: e.target.value })}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-[#c18742]"
               />
-              
+
               <div className="grid grid-cols-3 gap-2 mb-3">
                 <select
                   value={editFormData.hour}
-                  onChange={(e) => setEditFormData({...editFormData, hour: e.target.value})}
+                  onChange={(e) => setEditFormData({ ...editFormData, hour: e.target.value })}
                   className="border border-gray-300 rounded-lg px-2 py-2 focus:outline-none focus:ring-2 focus:ring-[#c18742]"
                 >
-                  {Array.from({length: 12}, (_, i) => i + 1).map(h => (
+                  {Array.from({ length: 12 }, (_, i) => i + 1).map(h => (
                     <option key={h} value={h}>{h}</option>
                   ))}
                 </select>
                 <select
                   value={editFormData.minute}
-                  onChange={(e) => setEditFormData({...editFormData, minute: e.target.value})}
+                  onChange={(e) => setEditFormData({ ...editFormData, minute: e.target.value })}
                   className="border border-gray-300 rounded-lg px-2 py-2 focus:outline-none focus:ring-2 focus:ring-[#c18742]"
                 >
                   {['00', '15', '30', '45'].map(m => (
@@ -816,7 +767,7 @@ const Dashboard = () => {
                 </select>
                 <select
                   value={editFormData.ampm}
-                  onChange={(e) => setEditFormData({...editFormData, ampm: e.target.value})}
+                  onChange={(e) => setEditFormData({ ...editFormData, ampm: e.target.value })}
                   className="border border-gray-300 rounded-lg px-2 py-2 focus:outline-none focus:ring-2 focus:ring-[#c18742]"
                 >
                   <option value="AM">AM</option>
@@ -826,7 +777,7 @@ const Dashboard = () => {
 
               <select
                 value={editFormData.frequency}
-                onChange={(e) => setEditFormData({...editFormData, frequency: e.target.value})}
+                onChange={(e) => setEditFormData({ ...editFormData, frequency: e.target.value })}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-[#c18742]"
               >
                 <option value="Daily">Daily</option>
@@ -837,7 +788,7 @@ const Dashboard = () => {
               <textarea
                 placeholder="Notes"
                 value={editFormData.notes}
-                onChange={(e) => setEditFormData({...editFormData, notes: e.target.value})}
+                onChange={(e) => setEditFormData({ ...editFormData, notes: e.target.value })}
                 rows={2}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-[#c18742] resize-none"
               />
