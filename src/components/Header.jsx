@@ -23,9 +23,13 @@ const Header = () => {
         {/* Logo/Brand */}
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-[#ffd68e] flex items-center justify-center">
-            <span className="text-[#55423c] font-bold text-lg">ff</span>
+            <img
+              src="/src/assets/furfurlogo.png"
+              alt="FurFur Logo"
+              className="w-12 h-12 object-contain"
+            />
           </div>
-          <div>
+          <div className="md:block hidden">
             <h1 className="text-xl font-bold">fur fur</h1>
             <p className="text-xs text-[#e8d7ca] opacity-80">
               Pet Care Companion
