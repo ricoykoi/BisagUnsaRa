@@ -1,17 +1,18 @@
-import React from "react";
+import React, { useContext } from "react";
 import { Home, PawPrint, Crown, Download, User, LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { AuthenticationContext } from "../context/AuthenticationContext";
 
 const Sidebar = () => {
   const navigate = useNavigate();
+  const { user, logout } = useContext(AuthenticationContext);
 
   const navigateTo = (path) => {
     navigate(path);
   };
 
   const handleLogout = () => {
-    // Add your logout logic here
-    navigate("/login");
+    logout();
   };
 
   return (
@@ -61,7 +62,7 @@ const Sidebar = () => {
             <User size={18} className="text-[#795225]" />
           </div>
           <div>
-            <p className="font-medium text-gray-800">Rex</p>
+            <p className="font-medium text-gray-800">{user.username}</p>
             <p className="text-xs text-gray-500">Premium User</p>
           </div>
         </div>

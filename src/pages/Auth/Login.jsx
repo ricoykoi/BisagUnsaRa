@@ -1,23 +1,38 @@
-import React, { useState } from "react";
+import React, { useContext, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { PawPrint, Lock, User, Eye, EyeOff } from "lucide-react";
+import { loginUser } from "../../services/userService";
+import { AuthenticationContext } from "../../context/AuthenticationContext";
 
 const Login = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const { setUser } = useContext(AuthenticationContext);
   const navigate = useNavigate();
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
 
-    // Basic validation
     if (!username || !password) {
       alert("Please enter both username and password");
       return;
     }
 
-    navigate("/dashboard");
+    try {
+      const response = await loginUser({
+        username: username,
+        password: password,
+      });
+
+      // set user in context
+      setUser(response.user);
+
+      alert("Login successful!");
+    } catch (err) {
+      console.log("Login error:", err);
+      alert("Login failed. Please check your credentials.");
+    }
   };
 
   return (

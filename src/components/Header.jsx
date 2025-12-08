@@ -1,9 +1,12 @@
-import React from "react";
+import React, { useContext } from "react";
 import { User, Bell, Settings } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { AuthenticationContext } from "../context/AuthenticationContext";
 
 const Header = () => {
   const navigate = useNavigate();
+  const { user } = useContext(AuthenticationContext);
+  console.log(user);
 
   const handleProfileClick = () => {
     navigate("/profile");
@@ -67,7 +70,7 @@ const Header = () => {
               <User size={18} className="text-[#55423c]" />
             </div>
             <div className="text-left">
-              <p className="font-medium text-sm">Rex</p>
+              <p className="font-medium text-sm">{user?.username}</p>
               <p className="text-xs text-[#e8d7ca] opacity-80">Premium</p>
             </div>
           </button>

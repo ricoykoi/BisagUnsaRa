@@ -4,8 +4,6 @@ import Dashboard from "../pages/Dashboard";
 import MyPets from "../pages/MyPets";
 import Plans from "../pages/Plans";
 import Export from "../pages/Export";
-import Login from "../pages/Auth/Login";
-import Register from "../pages/Auth/Register";
 import { SubscriptionProvider } from "../context/SubscriptionContext";
 import MainLayout from "../layout/MainLayout";
 
@@ -14,6 +12,7 @@ const MainRoutes = () => {
     <SubscriptionProvider>
       <BrowserRouter>
         <Routes>
+          <Route path="*" element={<Navigate to="/dashboard" />} />
           <Route
             path="/dashboard"
             element={
@@ -46,9 +45,6 @@ const MainRoutes = () => {
               </MainLayout>
             }
           />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="*" element={<Navigate to="/login" />} />
         </Routes>
       </BrowserRouter>
     </SubscriptionProvider>

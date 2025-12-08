@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   LogOut,
@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { useSubscription } from "../context/useSubscriptionHook";
 import petCareTips from "../api/petCareTips.js";
+import { AuthenticationContext } from "../context/AuthenticationContext.jsx";
 
 const formatDate = (date) => {
   const options = { weekday: "short", month: "short", day: "numeric" };
@@ -114,16 +115,11 @@ const generateRecurringSchedules = (baseSchedules) => {
   });
 };
 
-const getCurrentUser = () => {
-  const userStr = localStorage.getItem("currentUser");
-  return userStr ? JSON.parse(userStr) : null;
-};
-
 const Dashboard = () => {
   const navigate = useNavigate();
   const { currentPlan, getPlanFeatures } = useSubscription();
   const features = getPlanFeatures(currentPlan);
-  const user = getCurrentUser();
+  const user = useContext(AuthenticationContext);
 
   // Function to get 3 random tips
   const getRandomTips = (tips, count = 3) => {
@@ -404,7 +400,7 @@ const Dashboard = () => {
         <div className="flex flex-col md:flex-row space-y-4 md:space-y-0 justify-between items-start">
           <div>
             <h1 className="text-2xl font-bold mb-1">
-              {getGreeting()}, {user?.name || "Rex"}! 🐾
+              {getGreeting()}, {user?.user.username}! 🐾
             </h1>
             <p className="text-gray-500 opacity-90">
               Track and manage your pet's care
