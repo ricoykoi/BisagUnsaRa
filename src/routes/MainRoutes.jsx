@@ -6,6 +6,7 @@ import Plans from "../pages/Plans";
 import Export from "../pages/Export";
 import { SubscriptionProvider } from "../context/SubscriptionContext";
 import MainLayout from "../layout/MainLayout";
+import Settings from "../pages/Settings";
 
 const MainRoutes = () => {
   return (
@@ -42,6 +43,14 @@ const MainRoutes = () => {
             element={
               <MainLayout>
                 <Export />
+              </MainLayout>
+            }
+          />
+          <Route
+            path="/settings"
+            element={
+              <MainLayout>
+                <Settings />
               </MainLayout>
             }
           />
