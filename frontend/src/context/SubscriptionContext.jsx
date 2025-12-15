@@ -1,14 +1,14 @@
 // Helper function to get current user
 const getCurrentUser = () => {
-  const userStr = localStorage.getItem('currentUser');
+  const userStr = localStorage.getItem("currentUser");
   return userStr ? JSON.parse(userStr) : null;
 };
 
 // Helper function to get user-specific subscription key
 const getUserSubscriptionKey = (userId) => `subscription_${userId}`;
 
-import React, { useState, useEffect } from 'react';
-import { SubscriptionContext } from './SubscriptionContextDef';
+import React, { useState, useEffect } from "react";
+import { SubscriptionContext } from "./SubscriptionContextDef";
 
 // Provider component
 export const SubscriptionProvider = ({ children }) => {
@@ -16,39 +16,39 @@ export const SubscriptionProvider = ({ children }) => {
     const user = getCurrentUser();
     if (user) {
       const saved = localStorage.getItem(getUserSubscriptionKey(user.id));
-      return saved || 'Free Mode';
+      return saved || "Free Mode";
     }
-    return 'Free Mode';
+    return "Free Mode";
   });
 
   const getPlanFeatures = (plan) => {
     const plans = {
-      'Free Mode': {
-        displayName: 'Free Mode',
-        price: '₱0',
+      "Free Mode": {
+        displayName: "Free Mode",
+        price: "₱0",
         maxPets: 2,
         hasHealthRecords: false,
         hasCareTips: false,
-        hasExport: false
+        hasExport: false,
       },
-      'Premium Tier 1': {
-        displayName: 'Premium Tier 1',
-        price: '₱49.99',
+      "Premium Tier 1": {
+        displayName: "Premium Tier 1",
+        price: "₱49.99",
         maxPets: 5,
         hasHealthRecords: true,
         hasCareTips: false,
-        hasExport: false
+        hasExport: false,
       },
-      'Premium Tier 2': {
-        displayName: 'Premium Tier 2',
-        price: '₱99.99',
+      "Premium Tier 2": {
+        displayName: "Premium Tier 2",
+        price: "₱99.99",
         maxPets: 10,
         hasHealthRecords: true,
         hasCareTips: true,
-        hasExport: true
-      }
+        hasExport: true,
+      },
     };
-    return plans[plan] || plans['Free Mode'];
+    return plans[plan] || plans["Free Mode"];
   };
 
   const canAddPet = (currentPetCount) => {
@@ -61,7 +61,7 @@ export const SubscriptionProvider = ({ children }) => {
     const user = getCurrentUser();
     if (user) {
       const saved = localStorage.getItem(getUserSubscriptionKey(user.id));
-      setCurrentPlan(saved || 'Free Mode');
+      setCurrentPlan(saved || "Free Mode");
     }
   }, []);
 
@@ -78,7 +78,7 @@ export const SubscriptionProvider = ({ children }) => {
     setCurrentPlan,
     getPlanFeatures,
     canAddPet,
-    upgradePlan
+    upgradePlan,
   };
 
   return (

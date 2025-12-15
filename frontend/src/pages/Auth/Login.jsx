@@ -3,6 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { PawPrint, Lock, User, Eye, EyeOff } from "lucide-react";
 import { loginUser } from "../../services/userService";
 import { AuthenticationContext } from "../../context/AuthenticationContext";
+import logo from "/src/assets/furfurlogo.png";
 
 const Login = () => {
   const [username, setUsername] = useState("");
@@ -43,7 +44,7 @@ const Login = () => {
           <div className="flex items-center justify-center gap-3 mb-4">
             <div className="bg-white p-3 rounded-full shadow-sm">
               <img
-                src="/src/assets/furfurlogo.png"
+                src={logo}
                 alt="FurFur Logo"
                 className="w-12 h-12 object-contain"
               />

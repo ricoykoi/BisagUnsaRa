@@ -2,6 +2,7 @@ import React, { useContext } from "react";
 import { User, Bell, Settings } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { AuthenticationContext } from "../context/AuthenticationContext";
+import logo from "/src/assets/furfurlogo.png";
 
 const Header = () => {
   const navigate = useNavigate();
@@ -27,7 +28,7 @@ const Header = () => {
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-[#ffd68e] flex items-center justify-center">
             <img
-              src="/src/assets/furfurlogo.png"
+              src={logo}
               alt="FurFur Logo"
               className="w-12 h-12 object-contain"
             />
