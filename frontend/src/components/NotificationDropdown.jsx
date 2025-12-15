@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useContext, useRef } from "react";
-import { useLocation } from "react-router-dom";
 import { Bell, X, Check, CheckCheck, Trash2, Clock } from "lucide-react";
 import { AuthenticationContext } from "../context/AuthenticationContext";
 import {

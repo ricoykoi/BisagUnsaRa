@@ -20,7 +20,7 @@ const Header = () => {
   };
 
   const handleProfileClick = () => {
-    navigate("/profile");
+    navigate("/settings");
   };
 
 
