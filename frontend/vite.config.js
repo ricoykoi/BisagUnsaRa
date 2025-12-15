@@ -92,7 +92,7 @@ export default defineConfig({
 
       // Development server options
       devOptions: {
-        enabled: false, // Recommended to keep false unless you are actively debugging the Service Worker
+        enabled: true, // Recommended to keep false unless you are actively debugging the Service Worker
       },
     }),
   ],
