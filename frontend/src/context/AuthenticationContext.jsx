@@ -1,23 +1,13 @@
-import { createContext, useState, useEffect } from "react";
+import { createContext, useState } from "react";
 
 export const AuthenticationContext = createContext();
 
 export const AuthenticationProvider = ({ children }) => {
-  const storedUser = sessionStorage.getItem("user");
-
-  const [user, setUser] = useState(storedUser ? JSON.parse(storedUser) : false);
-
-  useEffect(() => {
-    if (user) {
-      sessionStorage.setItem("user", JSON.stringify(user));
-    } else {
-      sessionStorage.removeItem("user");
-    }
-  }, [user]);
+  // Keep user only in memory; persistence lives in MongoDB via API
+  const [user, setUser] = useState(null);
 
   const logout = () => {
-    setUser(false);
-    sessionStorage.removeItem("user");
+    setUser(null);
   };
 
   return (

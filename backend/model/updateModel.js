@@ -49,3 +49,4 @@ const Update = mongoose.model("update", updateSchema);
 
 export default Update;
 
+

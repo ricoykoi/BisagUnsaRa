@@ -29,6 +29,7 @@ const Login = () => {
       setUser(response.user);
 
       alert("Login successful!");
+      navigate("/dashboard");
     } catch (err) {
       console.log("Login error:", err);
       alert("Login failed. Please check your credentials.");

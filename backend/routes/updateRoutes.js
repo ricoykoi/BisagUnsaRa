@@ -30,3 +30,4 @@ updateRouter.post("/check", checkAndCreateNotifications);
 
 export default updateRouter;
 
+
