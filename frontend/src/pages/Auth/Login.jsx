@@ -144,7 +144,7 @@ const Login = () => {
         {/* Simple Footer */}
         <div className="text-center mt-8">
           <p className="text-sm text-[#795225]">
-            © 2024 FurFur. All rights reserved.
+            © 2025 FurFur. All rights reserved.
           </p>
         </div>
       </div>
