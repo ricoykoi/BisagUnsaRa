@@ -1,20 +1,28 @@
 import React, { useContext } from "react";
-import { User, Bell, Settings } from "lucide-react";
+import { User, Settings } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { AuthenticationContext } from "../context/AuthenticationContext";
+import { useSubscription } from "../context/useSubscriptionHook";
+import NotificationDropdown from "./NotificationDropdown";
 
 const Header = () => {
   const navigate = useNavigate();
   const { user } = useContext(AuthenticationContext);
-  console.log(user);
+  const { currentPlan } = useSubscription();
+  
+  // Format plan name for display
+  const getPlanDisplayName = (plan) => {
+    if (!plan) return "Free Plan User";
+    if (plan === "Free Mode") return "Free Plan User";
+    if (plan === "Premium Tier 1") return "Premium Tier 1 User";
+    if (plan === "Premium Tier 2") return "Premium Tier 2 User";
+    return `${plan} User`;
+  };
 
   const handleProfileClick = () => {
     navigate("/profile");
   };
 
-  const handleNotificationsClick = () => {
-    navigate("/notifications");
-  };
 
   const handleSettingsClick = () => {
     navigate("/settings");
@@ -43,14 +51,7 @@ const Header = () => {
         {/* Right-side actions */}
         <div className="flex items-center gap-4">
           {/* Notifications */}
-          <button
-            onClick={handleNotificationsClick}
-            className="relative p-2 rounded-full hover:bg-[#6a524a] transition-colors"
-            aria-label="Notifications"
-          >
-            <Bell size={20} />
-            <span className="absolute top-1 right-1 w-2 h-2 bg-[#ffd68e] rounded-full"></span>
-          </button>
+          <NotificationDropdown />
 
           {/* Settings */}
           <button
@@ -63,15 +64,23 @@ const Header = () => {
 
           {/* User Profile */}
           <button
-            onClick={handleProfileClick}
+            onClick={handleSettingsClick}
             className="flex items-center gap-3 p-2 pl-3 rounded-lg hover:bg-[#6a524a] transition-colors"
           >
-            <div className="w-9 h-9 rounded-full bg-[#ffd68e] flex items-center justify-center">
-              <User size={18} className="text-[#55423c]" />
-            </div>
+            {user?.profilePicture ? (
+              <img
+                src={user.profilePicture}
+                alt={user.username}
+                className="w-9 h-9 rounded-full object-cover border-2 border-[#ffd68e]"
+              />
+            ) : (
+              <div className="w-9 h-9 rounded-full bg-[#ffd68e] flex items-center justify-center">
+                <User size={18} className="text-[#55423c]" />
+              </div>
+            )}
             <div className="text-left">
               <p className="font-medium text-sm">{user?.username}</p>
-              <p className="text-xs text-[#e8d7ca] opacity-80">Premium</p>
+              <p className="text-xs text-[#e8d7ca] opacity-80">{getPlanDisplayName(currentPlan)}</p>
             </div>
           </button>
         </div>

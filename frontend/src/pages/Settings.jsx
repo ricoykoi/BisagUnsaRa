@@ -1,4 +1,4 @@
-import React, { useState, useContext } from "react";
+import React, { useState, useContext, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -32,6 +32,16 @@ import {
   Info,
 } from "lucide-react";
 import { AuthenticationContext } from "../context/AuthenticationContext";
+import { useSubscription } from "../context/useSubscriptionHook";
+import { 
+  updateProfilePicture,
+  updateUsername,
+  updateEmail, 
+  changePassword, 
+  deleteAccount 
+} from "../services/userService";
+import { Upload, X } from "lucide-react";
+
 
 // Color scheme matching your app
 const COLORS = {
@@ -46,7 +56,8 @@ const COLORS = {
 };
 
 const Settings = () => {
-  const { user, setUser } = useContext(AuthenticationContext);
+  const { user, setUser, logout } = useContext(AuthenticationContext);
+  const { currentPlan } = useSubscription();
   const navigate = useNavigate();
 
   // Settings states
@@ -66,15 +77,25 @@ const Settings = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showEmailForm, setShowEmailForm] = useState(false);
+  const [showUsernameForm, setShowUsernameForm] = useState(false);
+  const [newEmail, setNewEmail] = useState("");
+  const [newUsername, setNewUsername] = useState("");
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [showPasswordRequirements, setShowPasswordRequirements] = useState(false);
+  const fileInputRef = useRef(null);
 
-  // Mock user data
-  const userData = user || {
+  // User data from context
+  const userData = user ? {
+    username: user.username || "User",
+    email: user.email || "user@example.com",
+    plan: currentPlan || "Free Mode",
+    joinedDate: user.createdAt || new Date().toISOString().split('T')[0],
+  } : {
     username: "petlover123",
     email: "user@example.com",
-    phone: "+1 (555) 123-4567",
-    plan: "Free",
+    plan: "Free Mode",
     joinedDate: "2024-01-15",
-    pets: 2,
   };
 
   // Navigation animation
@@ -97,37 +118,140 @@ const Settings = () => {
 
   // Handlers
   const handleLogout = () => {
-    setUser(null);
-    localStorage.removeItem("user");
-    sessionStorage.removeItem("user");
-    navigate("/login");
+    logout();
+    navigate("/"); // Assuming root is login or public page
   };
 
-  const handleDeleteAccount = () => {
-    // In a real app, you would make an API call here
-    console.log("Account deletion requested");
-    setUser(null);
-    localStorage.removeItem("user");
-    navigate("/");
+  // Password validation function (same as Register.jsx)
+  const validatePassword = (password) => {
+    return {
+      hasMinLength: password.length >= 12,
+      hasNumber: /\d/.test(password),
+      hasLowercase: /[a-z]/.test(password),
+      hasUppercase: /[A-Z]/.test(password),
+      noLeadingTrailingSpaces:
+        password === password.trim() && password.length > 0,
+    };
   };
 
-  const handleChangePassword = () => {
-    // Validate and submit password change
+  const isPasswordValid = (password) => {
+    const validation = validatePassword(password);
+    return Object.values(validation).every((v) => v === true);
+  };
+
+  // Handle profile picture upload
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const base64String = reader.result;
+        try {
+          const response = await updateProfilePicture(user._id, base64String);
+          setUser(response.user);
+          alert("Profile picture updated successfully!");
+        } catch (error) {
+          console.error("Failed to update profile picture:", error);
+          alert(error.response?.data?.message || "Failed to update profile picture.");
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Handle username change
+  const handleChangeUsername = async () => {
+    if (!newUsername || newUsername.trim().length === 0) {
+      alert("Please enter a valid username!");
+      return;
+    }
+
+    if (newUsername.trim() === user.username) {
+      alert("New username is the same as current username!");
+      return;
+    }
+
+    try {
+      const response = await updateUsername(user._id, newUsername.trim());
+      setUser(response.user);
+      setShowUsernameForm(false);
+      setNewUsername("");
+      alert("Username updated successfully!");
+    } catch (error) {
+      console.error("Failed to update username:", error);
+      alert(error.response?.data?.message || "Failed to update username.");
+    }
+  };
+
+  // Handle email change
+  const handleChangeEmail = async () => {
+    if (!newEmail || !newEmail.includes("@")) {
+      alert("Please enter a valid email address!");
+      return;
+    }
+
+    if (newEmail.trim() === user.email) {
+      alert("New email is the same as current email!");
+      return;
+    }
+
+    try {
+      const response = await updateEmail(user._id, newEmail.trim());
+      setUser(response.user);
+      setShowEmailForm(false);
+      setNewEmail("");
+      alert("Email updated successfully!");
+    } catch (error) {
+      console.error("Failed to update email:", error);
+      alert(error.response?.data?.message || "Failed to update email.");
+    }
+  };
+
+  // Handle password change
+  const handleChangePassword = async () => {
     if (newPassword !== confirmPassword) {
       alert("New passwords don't match!");
       return;
     }
-    if (newPassword.length < 8) {
-      alert("Password must be at least 8 characters!");
+    if (!currentPassword || !newPassword) {
+      alert("Please fill in all password fields!");
       return;
     }
-    // API call would go here
-    console.log("Password change submitted");
-    setShowPasswordForm(false);
-    setCurrentPassword("");
-    setNewPassword("");
-    setConfirmPassword("");
-    alert("Password changed successfully!");
+
+    if (!isPasswordValid(newPassword)) {
+      alert("Password does not meet the requirements!");
+      return;
+    }
+
+    try {
+      await changePassword(user._id, currentPassword, newPassword);
+      setShowPasswordForm(false);
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      alert("Password changed successfully!");
+    } catch (error) {
+      console.error("Password change failed:", error);
+      alert(error.response?.data?.message || "Failed to change password.");
+    }
+  };
+
+  // Handle delete account
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmText.toLowerCase() !== "delete") {
+      alert('Please type "delete" to confirm account deletion.');
+      return;
+    }
+
+    try {
+      await deleteAccount(user._id);
+      alert("Account deleted successfully.");
+      logout();
+      navigate("/");
+    } catch (error) {
+      console.error("Failed to delete account:", error);
+      alert(error.response?.data?.message || "Failed to delete account.");
+    }
   };
 
   const toggleNotification = (type) => {
@@ -140,7 +264,7 @@ const Settings = () => {
   const exportData = () => {
     const data = {
       user: userData,
-      pets: [],
+      pets: [], // Assuming pets are not in settings context
       settings: {
         darkMode,
         notifications,
@@ -167,64 +291,25 @@ const Settings = () => {
       items: [
         {
           icon: <User size={18} />,
-          label: "Profile",
+          label: "Username",
           value: userData.username,
           color: COLORS.coffeeBrown,
-          onClick: () => navigate("/profile"),
+          onClick: () => setShowUsernameForm(true),
         },
         {
           icon: <Mail size={18} />,
           label: "Email",
           value: userData.email,
           color: COLORS.coffeeBrown,
-        },
-        {
-          icon: <Smartphone size={18} />,
-          label: "Phone",
-          value: userData.phone,
-          color: COLORS.coffeeBrown,
+          onClick: () => setShowEmailForm(true),
         },
         {
           icon: <CreditCard size={18} />,
           label: "Subscription Plan",
-          value: userData.plan,
+          value: currentPlan || "Free Mode",
           badgeColor:
-            userData.plan === "Premium" ? COLORS.green : COLORS.grayBrown,
+            currentPlan && currentPlan !== "Free Mode" ? COLORS.green : COLORS.grayBrown,
           onClick: () => navigate("/plans"),
-        },
-      ],
-    },
-    {
-      title: "Preferences",
-      icon: <Palette size={20} />,
-      items: [
-        {
-          icon: darkMode ? <Moon size={18} /> : <Sun size={18} />,
-          label: "Theme",
-          value: darkMode ? "Dark Mode" : "Light Mode",
-          type: "toggle",
-          toggleValue: darkMode,
-          onToggle: () => setDarkMode(!darkMode),
-          color: COLORS.coffeeBrown,
-        },
-        {
-          icon: <Globe size={18} />,
-          label: "Language",
-          value: language.charAt(0).toUpperCase() + language.slice(1),
-          type: "select",
-          options: ["English", "Spanish", "French", "German"],
-          currentValue: language,
-          onChange: (value) => setLanguage(value.toLowerCase()),
-          color: COLORS.coffeeBrown,
-        },
-        {
-          icon: <Volume2 size={18} />,
-          label: "Sounds",
-          value: soundEnabled ? "Enabled" : "Disabled",
-          type: "toggle",
-          toggleValue: soundEnabled,
-          onToggle: () => setSoundEnabled(!soundEnabled),
-          color: COLORS.coffeeBrown,
         },
       ],
     },
@@ -240,30 +325,6 @@ const Settings = () => {
           onToggle: () => toggleNotification("reminders"),
           color: COLORS.coffeeBrown,
         },
-        {
-          icon: <Heart size={18} />,
-          label: "Feeding Alerts",
-          type: "toggle",
-          toggleValue: notifications.feeding,
-          onToggle: () => toggleNotification("feeding"),
-          color: COLORS.coffeeBrown,
-        },
-        {
-          icon: <AlertCircle size={18} />,
-          label: "Health Updates",
-          type: "toggle",
-          toggleValue: notifications.health,
-          onToggle: () => toggleNotification("health"),
-          color: COLORS.coffeeBrown,
-        },
-        {
-          icon: <Info size={18} />,
-          label: "Promotions & News",
-          type: "toggle",
-          toggleValue: notifications.promotions,
-          onToggle: () => toggleNotification("promotions"),
-          color: COLORS.coffeeBrown,
-        },
       ],
     },
     {
@@ -277,13 +338,6 @@ const Settings = () => {
           onClick: () => setShowPasswordForm(true),
           color: COLORS.coffeeBrown,
         },
-        {
-          icon: <Download size={18} />,
-          label: "Export Data",
-          type: "action",
-          onClick: exportData,
-          color: COLORS.coffeeBrown,
-        },
       ],
     },
     {
@@ -291,21 +345,9 @@ const Settings = () => {
       icon: <HelpCircle size={20} />,
       items: [
         {
-          icon: <Info size={18} />,
-          label: "App Version",
-          value: "2.1.0",
-          color: COLORS.coffeeBrown,
-        },
-        {
           icon: <Calendar size={18} />,
           label: "Member Since",
-          value: new Date(userData.joinedDate).toLocaleDateString(),
-          color: COLORS.coffeeBrown,
-        },
-        {
-          icon: <Users size={18} />,
-          label: "Connected Pets",
-          value: `${userData.pets} pets`,
+          value: new Date(userData.joinedDate).toLocaleDateString(), // Reverted to mock
           color: COLORS.coffeeBrown,
         },
       ],
@@ -351,13 +393,38 @@ const Settings = () => {
         >
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
-              <div
-                className="w-16 h-16 rounded-full flex items-center justify-center"
-                style={{ backgroundColor: COLORS.coffeeBrown }}
-              >
-                <span className="text-2xl font-bold text-white">
-                  {userData.username.charAt(0).toUpperCase()}
-                </span>
+              <div className="relative">
+                {user?.profilePicture ? (
+                  <img
+                    src={user.profilePicture}
+                    alt={userData.username}
+                    className="w-16 h-16 rounded-full object-cover border-4 border-white shadow-lg cursor-pointer"
+                    onClick={() => fileInputRef.current?.click()}
+                  />
+                ) : (
+                  <div 
+                    className="w-16 h-16 rounded-full bg-gradient-to-br from-[#ffd68e] to-[#c18742] flex items-center justify-center border-4 border-white shadow-lg cursor-pointer hover:opacity-90 transition-opacity"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <span className="text-2xl font-bold text-white">
+                      {userData.username.charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                )}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageChange}
+                  className="hidden"
+                />
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="absolute bottom-0 right-0 w-6 h-6 rounded-full bg-[#c18742] flex items-center justify-center border-2 border-white shadow-lg hover:bg-[#a87338] transition-colors"
+                  title="Change profile picture"
+                >
+                  <Upload size={12} className="text-white" />
+                </button>
               </div>
               <div>
                 <h2
@@ -381,10 +448,7 @@ const Settings = () => {
                           : COLORS.grayBrown,
                     }}
                   >
-                    {userData.plan} Plan
-                  </span>
-                  <span className="text-xs" style={{ color: COLORS.grayBrown }}>
-                    • {userData.pets} pets
+                    {userData.plan}
                   </span>
                 </div>
               </div>
@@ -648,6 +712,8 @@ const Settings = () => {
                       type={showNewPassword ? "text" : "password"}
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
+                      onFocus={() => setShowPasswordRequirements(true)}
+                      onBlur={() => setShowPasswordRequirements(false)}
                       className="w-full px-4 py-2 rounded-lg border focus:outline-none"
                       style={{
                         borderColor: COLORS.coffeeBrown,
@@ -667,6 +733,74 @@ const Settings = () => {
                       )}
                     </button>
                   </div>
+                  {/* Password Requirements */}
+                  {(showPasswordRequirements || newPassword.length > 0) && (
+                    <div
+                      className="mt-2 p-3 rounded-lg border-l-4 text-xs"
+                      style={{
+                        backgroundColor: "#f9f9f9",
+                        borderLeftColor: COLORS.coffeeBrown,
+                      }}
+                    >
+                      {(() => {
+                        const validation = validatePassword(newPassword);
+                        return (
+                          <div className="space-y-1">
+                            <div className="flex items-center">
+                              <span className={`w-4 h-4 rounded-full flex items-center justify-center text-xs mr-2 ${
+                                validation.hasMinLength ? "bg-green-500 text-white" : "bg-gray-300 text-gray-600"
+                              }`}>
+                                {validation.hasMinLength ? "✓" : "○"}
+                              </span>
+                              <span className={validation.hasMinLength ? "text-green-600" : "text-gray-600"}>
+                                At least 12 characters
+                              </span>
+                            </div>
+                            <div className="flex items-center">
+                              <span className={`w-4 h-4 rounded-full flex items-center justify-center text-xs mr-2 ${
+                                validation.hasNumber ? "bg-green-500 text-white" : "bg-gray-300 text-gray-600"
+                              }`}>
+                                {validation.hasNumber ? "✓" : "○"}
+                              </span>
+                              <span className={validation.hasNumber ? "text-green-600" : "text-gray-600"}>
+                                1 number
+                              </span>
+                            </div>
+                            <div className="flex items-center">
+                              <span className={`w-4 h-4 rounded-full flex items-center justify-center text-xs mr-2 ${
+                                validation.hasLowercase ? "bg-green-500 text-white" : "bg-gray-300 text-gray-600"
+                              }`}>
+                                {validation.hasLowercase ? "✓" : "○"}
+                              </span>
+                              <span className={validation.hasLowercase ? "text-green-600" : "text-gray-600"}>
+                                1 lowercase letter
+                              </span>
+                            </div>
+                            <div className="flex items-center">
+                              <span className={`w-4 h-4 rounded-full flex items-center justify-center text-xs mr-2 ${
+                                validation.hasUppercase ? "bg-green-500 text-white" : "bg-gray-300 text-gray-600"
+                              }`}>
+                                {validation.hasUppercase ? "✓" : "○"}
+                              </span>
+                              <span className={validation.hasUppercase ? "text-green-600" : "text-gray-600"}>
+                                1 uppercase letter
+                              </span>
+                            </div>
+                            <div className="flex items-center">
+                              <span className={`w-4 h-4 rounded-full flex items-center justify-center text-xs mr-2 ${
+                                validation.noLeadingTrailingSpaces ? "bg-green-500 text-white" : "bg-gray-300 text-gray-600"
+                              }`}>
+                                {validation.noLeadingTrailingSpaces ? "✓" : "○"}
+                              </span>
+                              <span className={validation.noLeadingTrailingSpaces ? "text-green-600" : "text-gray-600"}>
+                                No leading or trailing spaces
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
                 </div>
 
                 <div>
@@ -738,16 +872,38 @@ const Settings = () => {
                 >
                   Delete Account?
                 </h3>
-                <p className="text-sm" style={{ color: COLORS.grayBrown }}>
+                <p className="text-sm mb-4" style={{ color: COLORS.grayBrown }}>
                   Are you sure you want to delete your account? This action is
                   permanent and cannot be undone. All your pets' data will be
                   lost.
                 </p>
+                <div>
+                  <label
+                    className="block text-sm font-medium mb-2"
+                    style={{ color: COLORS.darkBrown }}
+                  >
+                    Type "delete" to confirm:
+                  </label>
+                  <input
+                    type="text"
+                    value={deleteConfirmText}
+                    onChange={(e) => setDeleteConfirmText(e.target.value)}
+                    placeholder="Type 'delete' here"
+                    className="w-full px-4 py-2 rounded-lg border focus:outline-none"
+                    style={{
+                      borderColor: COLORS.coffeeBrown,
+                      color: COLORS.darkBrown,
+                    }}
+                  />
+                </div>
               </div>
 
               <div className="flex gap-3">
                 <button
-                  onClick={() => setShowDeleteConfirm(false)}
+                  onClick={() => {
+                    setShowDeleteConfirm(false);
+                    setDeleteConfirmText("");
+                  }}
                   className="flex-1 px-4 py-3 rounded-lg font-medium"
                   style={{
                     backgroundColor: COLORS.lightGray,
@@ -758,13 +914,226 @@ const Settings = () => {
                 </button>
                 <button
                   onClick={handleDeleteAccount}
-                  className="flex-1 px-4 py-3 rounded-lg font-medium"
+                  disabled={deleteConfirmText.toLowerCase() !== "delete"}
+                  className={`flex-1 px-4 py-3 rounded-lg font-medium ${
+                    deleteConfirmText.toLowerCase() !== "delete" ? "opacity-50 cursor-not-allowed" : ""
+                  }`}
                   style={{
                     backgroundColor: COLORS.red,
                     color: COLORS.white,
                   }}
                 >
                   Delete Account
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Username Change Modal */}
+      <AnimatePresence>
+        {showUsernameForm && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="bg-white rounded-2xl p-6 w-full max-w-md"
+            >
+              <div className="flex justify-between items-center mb-4">
+                <h3
+                  className="text-xl font-bold"
+                  style={{ color: COLORS.darkBrown }}
+                >
+                  Change Username
+                </h3>
+                <button
+                  onClick={() => {
+                    setShowUsernameForm(false);
+                    setNewUsername("");
+                  }}
+                  className="p-1 hover:bg-gray-100 rounded transition-colors"
+                >
+                  <X size={20} className={COLORS.grayBrown} />
+                </button>
+              </div>
+
+              <div className="mb-4">
+                <label
+                  className="block text-sm font-medium mb-2"
+                  style={{ color: COLORS.darkBrown }}
+                >
+                  Current Username
+                </label>
+                <input
+                  type="text"
+                  value={userData.username}
+                  disabled
+                  className="w-full px-4 py-2 rounded-lg border bg-gray-100"
+                  style={{
+                    borderColor: COLORS.lightGray,
+                    color: COLORS.grayBrown,
+                  }}
+                />
+              </div>
+
+              <div className="mb-4">
+                <label
+                  className="block text-sm font-medium mb-2"
+                  style={{ color: COLORS.darkBrown }}
+                >
+                  New Username
+                </label>
+                <input
+                  type="text"
+                  value={newUsername}
+                  onChange={(e) => setNewUsername(e.target.value)}
+                  placeholder="Enter new username"
+                  className="w-full px-4 py-2 rounded-lg border focus:outline-none"
+                  style={{
+                    borderColor: COLORS.coffeeBrown,
+                    color: COLORS.darkBrown,
+                  }}
+                />
+                <p className="text-xs mt-1" style={{ color: COLORS.grayBrown }}>
+                  Username must be unique and not already in use
+                </p>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowUsernameForm(false);
+                    setNewUsername("");
+                  }}
+                  className="flex-1 px-4 py-2 rounded-lg font-medium"
+                  style={{
+                    backgroundColor: COLORS.lightGray,
+                    color: COLORS.darkBrown,
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleChangeUsername}
+                  disabled={!newUsername || newUsername.trim().length === 0 || newUsername.trim() === userData.username}
+                  className={`flex-1 px-4 py-2 rounded-lg font-medium ${
+                    !newUsername || newUsername.trim().length === 0 || newUsername.trim() === userData.username
+                      ? "opacity-50 cursor-not-allowed"
+                      : ""
+                  }`}
+                  style={{
+                    backgroundColor: COLORS.coffeeBrown,
+                    color: COLORS.white,
+                  }}
+                >
+                  Update Username
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Email Change Modal */}
+      <AnimatePresence>
+        {showEmailForm && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="bg-white rounded-2xl p-6 w-full max-w-md"
+            >
+              <div className="flex justify-between items-center mb-4">
+                <h3
+                  className="text-xl font-bold"
+                  style={{ color: COLORS.darkBrown }}
+                >
+                  Change Email
+                </h3>
+                <button
+                  onClick={() => {
+                    setShowEmailForm(false);
+                    setNewEmail("");
+                  }}
+                  className="p-1 hover:bg-gray-100 rounded transition-colors"
+                >
+                  <X size={20} className={COLORS.grayBrown} />
+                </button>
+              </div>
+
+              <div className="mb-4">
+                <label
+                  className="block text-sm font-medium mb-2"
+                  style={{ color: COLORS.darkBrown }}
+                >
+                  Current Email
+                </label>
+                <input
+                  type="email"
+                  value={userData.email}
+                  disabled
+                  className="w-full px-4 py-2 rounded-lg border bg-gray-100"
+                  style={{
+                    borderColor: COLORS.lightGray,
+                    color: COLORS.grayBrown,
+                  }}
+                />
+              </div>
+
+              <div className="mb-4">
+                <label
+                  className="block text-sm font-medium mb-2"
+                  style={{ color: COLORS.darkBrown }}
+                >
+                  New Email
+                </label>
+                <input
+                  type="email"
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value)}
+                  placeholder="Enter new email"
+                  className="w-full px-4 py-2 rounded-lg border focus:outline-none"
+                  style={{
+                    borderColor: COLORS.coffeeBrown,
+                    color: COLORS.darkBrown,
+                  }}
+                />
+                <p className="text-xs mt-1" style={{ color: COLORS.grayBrown }}>
+                  Email must be unique and not already in use
+                </p>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowEmailForm(false);
+                    setNewEmail("");
+                  }}
+                  className="flex-1 px-4 py-2 rounded-lg font-medium"
+                  style={{
+                    backgroundColor: COLORS.lightGray,
+                    color: COLORS.darkBrown,
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleChangeEmail}
+                  disabled={!newEmail || !newEmail.includes("@") || newEmail.trim() === userData.email}
+                  className={`flex-1 px-4 py-2 rounded-lg font-medium ${
+                    !newEmail || !newEmail.includes("@") || newEmail.trim() === userData.email
+                      ? "opacity-50 cursor-not-allowed"
+                      : ""
+                  }`}
+                  style={{
+                    backgroundColor: COLORS.coffeeBrown,
+                    color: COLORS.white,
+                  }}
+                >
+                  Update Email
                 </button>
               </div>
             </motion.div>

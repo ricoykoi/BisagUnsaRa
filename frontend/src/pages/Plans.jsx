@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   LogOut,
@@ -26,23 +26,61 @@ const Plans = () => {
   const { currentPlan, upgradePlan } = useSubscription();
   const [selectedPlan, setSelectedPlan] = useState(currentPlan);
 
+  // Update selectedPlan when currentPlan changes
+  useEffect(() => {
+    setSelectedPlan(currentPlan);
+    console.log("Current plan updated:", currentPlan);
+  }, [currentPlan]);
+  
+  // Debug: Log when selectedPlan changes
+  useEffect(() => {
+    console.log("Selected plan changed:", selectedPlan);
+  }, [selectedPlan]);
+
   const navigateTo = (route) => {
     navigate(route);
   };
 
-  const handleSelectPlan = (plan) => {
+  const handleSelectPlan = (plan, e) => {
+    e?.stopPropagation();
+    console.log("Plan selected:", plan);
     setSelectedPlan(plan);
   };
 
-  const handleSubscribe = () => {
-    if (selectedPlan !== currentPlan) {
-      alert(
-        `✓ Subscription Updated\nYou are now subscribed to ${selectedPlan}!`
-      );
-      upgradePlan(selectedPlan);
-      navigate("/dashboard");
-    } else {
-      alert("You are already subscribed to this plan.");
+  const handleSubscribe = async (e) => {
+    e?.preventDefault();
+    e?.stopPropagation();
+    
+    console.log("Subscribe clicked:", { selectedPlan, currentPlan });
+    
+    if (!selectedPlan) {
+      alert("Please select a plan first.");
+      return;
+    }
+    
+    try {
+      console.log("Attempting to update plan to:", selectedPlan);
+      const response = await upgradePlan(selectedPlan);
+      console.log("Plan update response:", response);
+      
+      if (selectedPlan === currentPlan) {
+        alert(
+          `✓ Subscription Confirmed\nYour ${selectedPlan} subscription has been renewed and saved!`
+        );
+      } else {
+        alert(
+          `✓ Subscription Updated\nYou are now subscribed to ${selectedPlan}!`
+        );
+      }
+      
+      // Small delay to ensure state is updated
+      setTimeout(() => {
+        navigate("/dashboard");
+      }, 100);
+    } catch (error) {
+      console.error("Subscription update failed:", error);
+      const errorMessage = error.response?.data?.message || error.message || "Failed to update subscription. Please try again.";
+      alert(`Error: ${errorMessage}`);
     }
   };
 
@@ -150,12 +188,11 @@ const Plans = () => {
                   ? `ring-2 ring-offset-2 ${plan.borderColor}`
                   : ""
               } ${plan.current ? "ring-2 ring-offset-2 ring-green-500" : ""}`}
-              onClick={() => handleSelectPlan(plan.name)}
             >
               {/* Plan Header */}
               <div className={`h-3 bg-gradient-to-r ${plan.color}`}></div>
 
-              <div className="p-6 bg-white">
+              <div className="p-6 bg-white plan-card-content">
                 {plan.recommended && (
                   <div className="flex justify-center mb-4">
                     <div className="bg-gradient-to-r from-[#c18742] to-[#a87338] text-white text-sm font-bold px-4 py-1.5 rounded-full inline-flex items-center gap-2">
@@ -220,8 +257,11 @@ const Plans = () => {
                   }`}
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleSelectPlan(plan.name);
+                    if (!plan.current) {
+                      handleSelectPlan(plan.name, e);
+                    }
                   }}
+                  disabled={plan.current}
                 >
                   {plan.current
                     ? "Current Plan"
@@ -236,20 +276,35 @@ const Plans = () => {
 
         {/* Subscribe Button */}
         <div className="mb-10">
+          {selectedPlan && selectedPlan !== currentPlan && (
+            <div className="text-center mb-3 text-sm text-[#795225]">
+              Selected: <span className="font-bold text-[#55423c]">{selectedPlan}</span>
+            </div>
+          )}
           <button
-            onClick={handleSubscribe}
-            disabled={selectedPlan === currentPlan}
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              console.log("Button clicked - selectedPlan:", selectedPlan, "currentPlan:", currentPlan);
+              handleSubscribe(e);
+            }}
+            disabled={!selectedPlan}
             className={`w-full max-w-md mx-auto block py-4 rounded-xl font-bold text-lg transition-all duration-300 shadow-lg ${
-              selectedPlan === currentPlan
+              !selectedPlan
                 ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                : "bg-gradient-to-r from-[#c18742] to-[#a87338] text-white hover:from-[#a87338] hover:to-[#8b5e2f] hover:shadow-xl transform hover:scale-[1.02]"
+                : selectedPlan === currentPlan
+                ? "bg-gradient-to-r from-green-500 to-green-600 text-white hover:from-green-600 hover:to-green-700 hover:shadow-xl transform hover:scale-[1.02] active:scale-[0.98]"
+                : "bg-gradient-to-r from-[#c18742] to-[#a87338] text-white hover:from-[#a87338] hover:to-[#8b5e2f] hover:shadow-xl transform hover:scale-[1.02] active:scale-[0.98]"
             }`}
           >
             <span className="flex items-center justify-center gap-3">
-              {selectedPlan === currentPlan
-                ? "Current Plan Active"
-                : "Subscribe Now"}
-              {selectedPlan !== currentPlan && <ChevronRight size={20} />}
+              {!selectedPlan
+                ? "Select a Plan"
+                : selectedPlan === currentPlan
+                ? `✓ Confirm ${selectedPlan} Subscription`
+                : `Subscribe to ${selectedPlan}`}
+              {selectedPlan && <ChevronRight size={20} />}
             </span>
           </button>
         </div>

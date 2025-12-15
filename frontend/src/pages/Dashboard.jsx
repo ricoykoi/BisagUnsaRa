@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useContext } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useMemo, useContext, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   LogOut,
   Home,
@@ -18,17 +18,22 @@ import {
   ChevronRight,
   AlertCircle,
   TrendingUp,
+  Edit,
+  Trash2,
   BarChart3,
   Users,
   FileText,
+  Upload,
   Shield,
   Activity,
 } from "lucide-react";
 import { useSubscription } from "../context/useSubscriptionHook";
+import { getPets, updatePet } from "../services/petService.js";
 import petCareTips from "../api/petCareTips.js";
 import { AuthenticationContext } from "../context/AuthenticationContext.jsx";
 
-const formatDate = (date) => {
+const formatDate = (dateString) => {
+  const date = new Date(dateString);
   const options = { weekday: "short", month: "short", day: "numeric" };
   return date.toLocaleDateString("en-US", options);
 };
@@ -47,7 +52,7 @@ const parseTimeToMinutes = (timeString) => {
   return totalMinutes;
 };
 
-const generateRecurringSchedules = (baseSchedules) => {
+const generateRecurringSchedules = (baseSchedules, daysAhead = 30) => {
   const generatedSchedules = [];
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -65,7 +70,7 @@ const generateRecurringSchedules = (baseSchedules) => {
         id: `${schedule.originalScheduleId}-${idDate}`,
         date: new Date(date),
         isToday: date.toDateString() === today.toDateString(),
-        isCompleted: false,
+        isCompleted: schedule.isCompleted || false,
       });
     };
 
@@ -119,13 +124,35 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const { currentPlan, getPlanFeatures } = useSubscription();
   const features = getPlanFeatures(currentPlan);
-  const user = useContext(AuthenticationContext);
+  const { user } = useContext(AuthenticationContext);
+  const [pets, setPets] = useState([]);
 
   // Function to get 3 random tips
   const getRandomTips = (tips, count = 3) => {
     const shuffled = [...tips].sort(() => 0.5 - Math.random());
     return shuffled.slice(0, count);
   };
+
+  useEffect(() => {
+    const fetchPets = async () => {
+      if (user?._id) {
+        try {
+          console.log("Fetching pets for user:", user._id);
+          const userPets = await getPets(user._id);
+          console.log("Fetched pets:", userPets);
+          setPets(userPets || []);
+        } catch (error) {
+          console.error("Failed to fetch pets:", error);
+          console.error("Error details:", error.response?.data || error.message);
+          setPets([]);
+        }
+      } else {
+        console.warn("No user ID available, cannot fetch pets");
+        setPets([]);
+      }
+    };
+    fetchPets();
+  }, [user]);
 
   // Category filter state
   const [selectedCategory, setSelectedCategory] = useState("general");
@@ -147,38 +174,51 @@ const Dashboard = () => {
     setRefreshKey((prev) => prev + 1);
   };
 
-  // Load pets from localStorage or use empty array
-  const [pets, setPets] = useState(() => {
-    const saved = localStorage.getItem("pets");
-    return saved ? JSON.parse(saved) : [];
-  });
-
   // Generate all schedules from pets and sync
-  const allPets = pets;
-  const allSchedules = allPets.flatMap((pet) =>
-    (pet.schedules || []).map((schedule) => ({
-      ...schedule,
-      originalScheduleId: schedule.id,
-      petName: pet.name,
-      petId: pet.id,
-    }))
-  );
+  const allSchedules = useMemo(() => {
+    return pets.flatMap((pet) =>
+      (pet.schedules || []).map((schedule) => ({
+        ...schedule,
+        originalScheduleId: schedule._id,
+        petName: pet.name,
+        petId: pet._id,
+      }))
+    );
+  }, [pets]);
 
-  // Use useMemo to cache generated schedules and prevent recalculation
-  const { allGeneratedSchedules, todayDate } = useMemo(() => {
-    const generated = generateRecurringSchedules(allSchedules, 90);
+  // Use useMemo to cache generated schedules - matching Export.jsx structure
+  const { todayDate, upcomingSchedules, todaySchedules } = useMemo(() => {
+    const generated = generateRecurringSchedules(allSchedules, 30);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    return { allGeneratedSchedules: generated, todayDate: today };
+
+    const upcoming = generated.filter((s) => s.date >= today);
+    const todayScheds = upcoming
+      .filter((s) => {
+        const scheduleDate = new Date(s.date);
+        scheduleDate.setHours(0, 0, 0, 0);
+        return scheduleDate.getTime() === today.getTime();
+      })
+      .sort((a, b) => parseTimeToMinutes(a.time) - parseTimeToMinutes(b.time));
+
+    return {
+      todayDate: today,
+      upcomingSchedules: upcoming,
+      todaySchedules: todayScheds,
+    };
   }, [allSchedules]);
 
-  const [upcomingSchedules, setUpcomingSchedules] = useState(() => {
-    return allGeneratedSchedules.filter((s) => s.date >= todayDate);
-  });
-
-  const [pastSchedules] = useState(() => {
-    return allGeneratedSchedules.filter((s) => s.date < todayDate);
-  });
+  // Calculate past schedules
+  const pastSchedules = useMemo(() => {
+    const generated = generateRecurringSchedules(allSchedules, 30);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return generated.filter((s) => {
+      const scheduleDate = new Date(s.date);
+      scheduleDate.setHours(0, 0, 0, 0);
+      return scheduleDate.getTime() < today.getTime();
+    });
+  }, [allSchedules]);
 
   const [scheduleView, setScheduleView] = useState("today");
   const [editingSchedule, setEditingSchedule] = useState(null);
@@ -212,174 +252,145 @@ const Dashboard = () => {
     }
   };
 
-  const handleUpdateSchedule = () => {
+  const handleUpdateSchedule = async () => {
     if (!editFormData.hour || !editFormData.minute || !editFormData.ampm)
       return;
 
     const time = `${editFormData.hour}:${editFormData.minute} ${editFormData.ampm}`;
-    const updatedPets = pets.map((pet) => {
-      if (pet.id === editingSchedule.petId) {
-        return {
-          ...pet,
-          schedules: pet.schedules.map((sched) =>
-            sched.id === editingSchedule.originalScheduleId
-              ? { ...sched, ...editFormData, time }
-              : sched
-          ),
-        };
-      }
-      return pet;
-    });
+    const petToUpdate = pets.find(p => p._id === editingSchedule.petId);
+    if (!petToUpdate) return;
 
-    setPets(updatedPets);
-    localStorage.setItem("pets", JSON.stringify(updatedPets));
+    const updatedSchedules = petToUpdate.schedules.map((sched) =>
+      sched._id === editingSchedule.originalScheduleId
+        ? { ...sched, ...editFormData, time }
+        : sched
+    );
+
+    try {
+      const response = await updatePet(petToUpdate._id, { schedules: updatedSchedules }, user._id);
+      setPets(pets.map(p => p._id === petToUpdate._id ? response.pet : p));
+    } catch (error) {
+      console.error("Failed to update schedule:", error);
+      alert("Could not update schedule.");
+    }
+
     setEditModalVisible(false);
     setEditingSchedule(null);
 
-    // Refresh upcoming schedules
-    const newAllSchedules = updatedPets.flatMap((pet) =>
-      (pet.schedules || []).map((schedule) => ({
-        ...schedule,
-        petName: pet.name,
-        petId: pet.id,
-      }))
-    );
-    const generated = generateRecurringSchedules(newAllSchedules, 90);
-    setUpcomingSchedules(
-      generated.filter(
-        (s) => s.date >= new Date(new Date().setHours(0, 0, 0, 0))
-      )
-    );
   };
 
-  const handleDeleteSchedule = (schedule) => {
+  const handleDeleteSchedule = async (schedule) => {
     if (!confirm("Delete this schedule?")) return;
 
-    const updatedPets = pets.map((pet) => {
-      if (pet.id === schedule.petId) {
-        return {
-          ...pet,
-          schedules: pet.schedules.filter(
-            (s) => s.id !== schedule.originalScheduleId
-          ),
-        };
-      }
-      return pet;
-    });
+    const petToUpdate = pets.find(p => p._id === schedule.petId);
+    if (!petToUpdate) return;
 
-    setPets(updatedPets);
-    localStorage.setItem("pets", JSON.stringify(updatedPets));
-
-    // Refresh upcoming schedules
-    const newAllSchedules = updatedPets.flatMap((pet) =>
-      (pet.schedules || []).map((s) => ({
-        ...s,
-        petName: pet.name,
-        petId: pet.id,
-      }))
+    const updatedSchedules = petToUpdate.schedules.filter(
+      (s) => s._id !== schedule.originalScheduleId
     );
-    const generated = generateRecurringSchedules(newAllSchedules, 90);
-    setUpcomingSchedules(
-      generated.filter(
-        (s) => s.date >= new Date(new Date().setHours(0, 0, 0, 0))
-      )
-    );
-  };
 
-  const handleToggleComplete = (scheduleId, isToday) => {
-    if (!isToday) {
-      alert("You can only complete schedules for the current day.");
-      return;
+    try {
+      const response = await updatePet(petToUpdate._id, { schedules: updatedSchedules }, user._id);
+      setPets(pets.map(p => p._id === petToUpdate._id ? response.pet : p));
+    } catch (error) {
+      console.error("Failed to delete schedule:", error);
+      alert("Could not delete schedule.");
     }
+  };
 
-    const updatedSchedules = upcomingSchedules.map((schedule) =>
-      schedule.id === scheduleId
-        ? { ...schedule, isCompleted: !schedule.isCompleted }
-        : schedule
+  const handleToggleComplete = async (scheduleToToggle) => {
+    // Find the pet this schedule belongs to
+    const petToUpdate = pets.find((p) => p._id === scheduleToToggle.petId);
+    if (!petToUpdate) return;
+
+    const updatedSchedules = petToUpdate.schedules.map((s) =>
+      s._id === scheduleToToggle.originalScheduleId
+        ? { ...s, isCompleted: !s.isCompleted }
+        : s
     );
-    setUpcomingSchedules(updatedSchedules);
-    alert("Schedule status updated!");
+
+    try {
+      const response = await updatePet(petToUpdate._id, { schedules: updatedSchedules }, user._id);
+      setPets(pets.map(p => p._id === petToUpdate._id ? response.pet : p));
+    } catch (error) {
+      console.error("Failed to toggle completion:", error);
+      alert("Could not update schedule status.");
+    }
   };
 
-  const handleToggleNotification = (schedule) => {
-    const updatedPets = pets.map((pet) => {
-      if (pet.id === schedule.petId) {
-        return {
-          ...pet,
-          schedules: pet.schedules.map((sched) =>
-            sched.id === schedule.originalScheduleId
-              ? { ...sched, notificationsEnabled: !sched.notificationsEnabled }
-              : sched
-          ),
-        };
-      }
-      return pet;
-    });
+  const handleToggleNotification = async (schedule) => {
+    const petToUpdate = pets.find(p => p._id === schedule.petId);
+    if (!petToUpdate) return;
 
-    setPets(updatedPets);
-    localStorage.setItem("pets", JSON.stringify(updatedPets));
-
-    // Refresh schedules
-    const newAllSchedules = updatedPets.flatMap((pet) =>
-      (pet.schedules || []).map((s) => ({
-        ...s,
-        originalScheduleId: s.id,
-        petName: pet.name,
-        petId: pet.id,
-      }))
+    const updatedSchedules = petToUpdate.schedules.map((sched) =>
+      sched._id === schedule.originalScheduleId
+        ? { ...sched, notificationsEnabled: !sched.notificationsEnabled }
+        : sched
     );
-    const generated = generateRecurringSchedules(newAllSchedules);
-    setUpcomingSchedules(generated.filter((s) => s.date >= todayDate));
+
+    try {
+      const response = await updatePet(petToUpdate._id, { schedules: updatedSchedules }, user._id);
+      setPets(pets.map(p => p._id === petToUpdate._id ? response.pet : p));
+    } catch (error) {
+      console.error("Failed to toggle notification:", error);
+    }
   };
 
-  const handleToggleHealthNotification = (petId, recordType, recordId) => {
-    const updatedPets = pets.map((pet) => {
-      if (pet.id === petId) {
-        if (recordType === "vaccination") {
-          return {
-            ...pet,
-            vaccinations: pet.vaccinations.map((vacc) =>
-              vacc.id === recordId
-                ? { ...vacc, notificationsEnabled: !vacc.notificationsEnabled }
-                : vacc
-            ),
-          };
-        } else if (recordType === "vetVisit") {
-          return {
-            ...pet,
-            vetVisits: pet.vetVisits.map((visit) =>
-              visit.id === recordId
-                ? {
-                    ...visit,
-                    notificationsEnabled: !visit.notificationsEnabled,
-                  }
-                : visit
-            ),
-          };
-        }
+  const handleToggleHealthNotification = async (petId, recordType, recordId) => {
+    const petToUpdate = pets.find(p => p._id === petId);
+    if (!petToUpdate) return;
+
+    let updatedRecords;
+    const recordKey = recordType === 'vaccination' ? 'vaccinations' : 'vetVisits';
+
+    updatedRecords = petToUpdate[recordKey].map(record =>
+      record._id === recordId
+        ? { ...record, notificationsEnabled: !record.notificationsEnabled }
+        : record
+    );
+
+    try {
+      const response = await updatePet(petId, { [recordKey]: updatedRecords }, user._id);
+      setPets(pets.map(p => p._id === petId ? response.pet : p));
+    } catch (error) {
+      console.error("Failed to toggle health notification:", error);
+    }
+  };
+
+  const handleEditHealthRecord = (pet, record, type) => {
+    navigate('/mypets', { state: { action: 'editHealthRecord', petId: pet._id, recordId: record._id, recordType: type } });
+  };
+
+  const handleDeleteHealthRecord = async (petId, recordId, recordType) => {
+    if (confirm(`Are you sure you want to delete this ${recordType} record?`)) {
+      const petToUpdate = pets.find(p => p._id === petId);
+      if (!petToUpdate) return;
+
+      const recordKey = recordType === 'vaccination' ? 'vaccinations' : 'vetVisits';
+      const updatedRecords = petToUpdate[recordKey].filter(r => r._id !== recordId);
+
+      try {
+        const response = await updatePet(petId, { [recordKey]: updatedRecords }, user._id);
+        setPets(pets.map(p => p._id === petId ? response.pet : p));
+      } catch (error) {
+        console.error("Failed to delete health record:", error);
+        alert("Could not delete health record.");
       }
-      return pet;
-    });
-
-    setPets(updatedPets);
-    localStorage.setItem("pets", JSON.stringify(updatedPets));
+    }
   };
 
-  // Static calculations
-  const activeSchedules = pets.reduce((total, pet) => {
-    return total + (pet.schedules ? pet.schedules.length : 0);
-  }, 0);
+  // Static calculations - use useMemo for reactivity
+  const activeSchedules = useMemo(() => {
+    return pets.reduce((total, pet) => {
+      return total + (pet.schedules?.length || 0);
+    }, 0);
+  }, [pets]);
 
-  // Calculate today's tasks
-  const todayTasks = upcomingSchedules.filter((s) => {
-    const scheduleDate = new Date(s.date);
-    scheduleDate.setHours(0, 0, 0, 0);
-    return scheduleDate.getTime() === todayDate.getTime();
-  }).length;
-
-  const completedTasks = upcomingSchedules.filter(
+  // Calculate today's tasks - matching Export.jsx
+  const todayTasks = useMemo(() => todaySchedules.length, [todaySchedules]);
+  const completedTasks = useMemo(() => todaySchedules.filter(
     (schedule) => schedule.isCompleted
-  ).length;
+  ).length, [todaySchedules]);
 
   // Calculate tasks completion percentage
   const completionPercentage =
@@ -399,8 +410,8 @@ const Dashboard = () => {
       <div className="text-brown p-4">
         <div className="flex flex-col md:flex-row space-y-4 md:space-y-0 justify-between items-start">
           <div>
-            <h1 className="text-2xl font-bold mb-1">
-              {getGreeting()}, {user?.user.username}! 🐾
+            <h1 className="text-2xl font-bold text-[#55423c] mb-1">
+              {getGreeting()}, {user?.username || "User"}! 🐾
             </h1>
             <p className="text-gray-500 opacity-90">
               Track and manage your pet's care
@@ -506,7 +517,7 @@ const Dashboard = () => {
               </div>
             </div>
             <button
-              onClick={() => navigateTo("/plans")}
+              onClick={() => navigate("/plans")}
               className="bg-white text-[#c18742] px-4 py-2 rounded-lg font-semibold hover:bg-[#f8f6f4] transition-colors border border-[#c18742]"
             >
               {currentPlan === "Free Mode" ? "Upgrade" : "Change"}
@@ -626,81 +637,78 @@ const Dashboard = () => {
           </div>
 
           {scheduleView === "today" ? (
-            (() => {
-              const todaySchedules = upcomingSchedules
-                .filter((s) => {
-                  const scheduleDate = new Date(s.date);
-                  scheduleDate.setHours(0, 0, 0, 0);
-                  return scheduleDate.getTime() === todayDate.getTime();
-                })
-                .sort(
-                  (a, b) =>
-                    parseTimeToMinutes(a.time) - parseTimeToMinutes(b.time)
-                );
+            todaySchedules.length > 0 ? (
+              <div className="space-y-3">
+                {todaySchedules.map((schedule) => (
+                  <div
+                    key={schedule.id}
+                    className="flex items-center gap-4 p-4 rounded-lg border border-[#e8d7ca] hover:bg-[#f8f6f4] transition-colors"
+                  >
+                    <div className="flex-shrink-0">
+                      <button
+                        onClick={() => handleToggleComplete(schedule)}
+                        className="p-2"
+                      >
+                        {schedule.isCompleted ? (
+                          <CheckCircle className="text-green-500" size={20} />
+                        ) : (
+                          <Circle className="text-[#c18742]" size={20} />
+                        )}
+                      </button>
+                    </div>
 
-              return todaySchedules.length > 0 ? (
-                <div className="space-y-3">
-                  {todaySchedules.map((schedule) => (
-                    <div
-                      key={schedule.id}
-                      className="flex items-center justify-between p-3 rounded-lg border border-[#e8d7ca] hover:bg-[#f8f6f4] transition-colors"
-                    >
-                      <div className="flex items-center gap-3">
-                        <button
-                          onClick={() =>
-                            handleToggleComplete(schedule.id, true)
-                          }
-                          className="flex-shrink-0"
-                        >
-                          {schedule.isCompleted ? (
-                            <CheckCircle className="text-green-500" size={24} />
-                          ) : (
-                            <Circle className="text-[#c18742]" size={24} />
-                          )}
-                        </button>
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
                         <div>
-                          <div className="font-bold text-[#55423c]">
+                          <div className="font-bold text-[#55423c] text-sm">
                             {schedule.time}
                           </div>
-                          <div className="text-sm text-[#795225]">
-                            {schedule.type} • {schedule.petName}
+                          <div className="text-xs text-[#795225]">
+                            <span className="font-medium">{schedule.type}</span>{" "}
+                            • {schedule.petName}
                           </div>
                         </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => handleToggleNotification(schedule)}
-                          className="p-1.5 hover:bg-[#e8d7ca] rounded transition-colors"
-                          title={
-                            schedule.notificationsEnabled
-                              ? "Notifications on"
-                              : "Notifications off"
-                          }
-                        >
-                          <Bell
-                            size={18}
-                            className={
-                              schedule.notificationsEnabled
-                                ? "text-[#c18742] fill-[#c18742]"
-                                : "text-[#795225]"
-                            }
-                          />
-                        </button>
                         <div className="bg-[#ffd68e] text-[#795225] text-xs px-2 py-1 rounded-full font-medium">
                           Today
                         </div>
                       </div>
+                      {schedule.notes && (
+                        <div className="mt-2 text-xs text-[#795225] italic bg-[#f8f6f4] p-2 rounded">
+                          📝 {schedule.notes}
+                        </div>
+                      )}
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-[#795225]">
-                  <Clock size={48} className="mx-auto mb-3 text-[#e8d7ca]" />
-                  <p className="font-medium">No schedules for today</p>
-                  <p className="text-sm mt-1">Enjoy your day with your pets!</p>
-                </div>
-              );
-            })()
+
+                    <div className="flex-shrink-0">
+                      <button
+                        onClick={() => handleToggleNotification(schedule)}
+                        className="p-1.5 hover:bg-[#e8d7ca] rounded transition-colors"
+                        title={
+                          schedule.notificationsEnabled
+                            ? "Notifications on"
+                            : "Notifications off"
+                        }
+                      >
+                        <Bell
+                          size={18}
+                          className={
+                            schedule.notificationsEnabled
+                              ? "text-[#c18742] fill-[#c18742]"
+                              : "text-[#795225]"
+                          }
+                        />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-[#795225] bg-[#f8f6f4] rounded-lg">
+                <Clock size={48} className="mx-auto mb-3 text-[#e8d7ca]" />
+                <p className="font-medium">No schedules for today</p>
+                <p className="text-sm mt-1">Enjoy your day with your pets!</p>
+              </div>
+            )
           ) : scheduleView === "upcoming" ? (
             (() => {
               const futureSchedules = upcomingSchedules
@@ -709,46 +717,38 @@ const Dashboard = () => {
                   scheduleDate.setHours(0, 0, 0, 0);
                   return scheduleDate.getTime() > todayDate.getTime();
                 })
-                .sort((a, b) => {
-                  const dateCompare = a.date.getTime() - b.date.getTime();
-                  if (dateCompare !== 0) return dateCompare;
-                  return (
-                    parseTimeToMinutes(a.time) - parseTimeToMinutes(b.time)
-                  );
-                });
+                .slice(0, 20);
 
               return futureSchedules.length > 0 ? (
                 <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
                   {futureSchedules.map((schedule) => (
                     <div
                       key={schedule.id}
-                      className="p-3 rounded-lg border border-[#e8d7ca] hover:bg-[#f8f6f4] transition-colors"
+                      className="p-4 rounded-lg border border-[#e8d7ca] hover:bg-[#f8f6f4] transition-colors"
                     >
-                      <div className="flex justify-between items-start mb-2">
-                        <div className="flex items-center gap-2">
-                          <div className="bg-[#ffd68e] text-[#795225] text-xs px-2 py-1 rounded-full font-medium">
-                            {formatDate(schedule.date)}
-                          </div>
-                          <div className="text-sm font-medium text-[#795225]">
-                            {schedule.time}
-                          </div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="bg-[#ffd68e] text-[#795225] text-xs px-2 py-1 rounded-full font-medium">
+                          {formatDate(schedule.date)}
                         </div>
-                        <div className="flex gap-1">
+                        <div className="text-sm font-medium text-[#795225]">
+                          {schedule.time}
+                        </div>
+                        <div className="ml-auto flex gap-1">
                           <button
                             onClick={() => openEditScheduleModal(schedule)}
-                            className="text-xs text-blue-600 hover:text-blue-800"
+                            className="text-xs text-blue-600 hover:text-blue-800 px-2 py-1 hover:bg-blue-50 rounded"
                           >
                             Edit
                           </button>
                           <button
                             onClick={() => handleDeleteSchedule(schedule)}
-                            className="text-xs text-red-600 hover:text-red-800"
+                            className="text-xs text-red-600 hover:text-red-800 px-2 py-1 hover:bg-red-50 rounded"
                           >
                             Delete
                           </button>
                         </div>
                       </div>
-                      <div className="text-sm font-medium text-[#55423c]">
+                      <div className="font-semibold text-[#55423c] text-sm">
                         {schedule.type}
                       </div>
                       <div className="text-xs text-[#795225] mb-2">
@@ -763,15 +763,35 @@ const Dashboard = () => {
                         <div className="text-xs text-[#c18742] font-medium">
                           {schedule.frequency}
                         </div>
-                        {schedule.notifications && (
-                          <Bell size={14} className="text-[#c18742]" />
-                        )}
+                        <button
+                          onClick={() => handleToggleNotification(schedule)}
+                          className="p-1 hover:bg-[#e8d7ca] rounded transition-colors"
+                          title={
+                            schedule.notificationsEnabled
+                              ? "Notifications on"
+                              : "Notifications off"
+                          }
+                        >
+                          <Bell
+                            size={14}
+                            className={
+                              schedule.notificationsEnabled
+                                ? "text-[#c18742] fill-[#c18742]"
+                                : "text-[#795225]"
+                            }
+                          />
+                        </button>
                       </div>
                     </div>
                   ))}
+                  {upcomingSchedules.length > 20 && (
+                    <div className="text-center py-3 text-sm text-[#795225] italic">
+                      ... and {upcomingSchedules.length - 20} more schedules
+                    </div>
+                  )}
                 </div>
               ) : (
-                <div className="text-center py-8 text-[#795225]">
+                <div className="text-center py-8 text-[#795225] bg-[#f8f6f4] rounded-lg">
                   <Calendar size={48} className="mx-auto mb-3 text-[#e8d7ca]" />
                   <p className="font-medium">No upcoming schedules</p>
                   <p className="text-sm mt-1">
@@ -823,12 +843,6 @@ const Dashboard = () => {
               <h2 className="text-lg font-bold text-[#55423c]">
                 Health Records
               </h2>
-              <button
-                onClick={() => navigateTo("/mypets")}
-                className="text-sm text-[#c18742] font-medium hover:text-[#55423c] transition-colors"
-              >
-                View All
-              </button>
             </div>
 
             {pets.some(
@@ -836,7 +850,7 @@ const Dashboard = () => {
                 (pet.vaccinations && pet.vaccinations.length > 0) ||
                 (pet.vetVisits && pet.vetVisits.length > 0)
             ) ? (
-              <div className="space-y-4">
+              <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
                 {pets
                   .filter(
                     (pet) =>
@@ -845,13 +859,23 @@ const Dashboard = () => {
                   )
                   .map((pet) => (
                     <div
-                      key={pet.id}
+                      key={pet._id}
                       className="border-t border-[#e8d7ca] pt-4 first:border-t-0 first:pt-0"
                     >
-                      <div className="flex items-center gap-2 mb-3">
-                        <div className="w-8 h-8 rounded-full bg-[#ffd68e] flex items-center justify-center">
-                          <PawPrint size={16} className="text-[#795225]" />
-                        </div>
+                      <div className="flex items-center gap-3 mb-3">
+                        {pet.photo ? (
+                          <img
+                            src={pet.photo}
+                            alt={pet.name}
+                            className="w-12 h-12 rounded-full object-cover border-2 border-[#ffd68e] shadow-sm"
+                          />
+                        ) : (
+                          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#ffd68e] to-[#c18742] flex items-center justify-center border-2 border-white shadow-sm">
+                            <span className="text-lg font-bold text-white">
+                              {pet.name.charAt(0)}
+                            </span>
+                          </div>
+                        )}
                         <h3 className="font-bold text-[#55423c]">{pet.name}</h3>
                       </div>
 
@@ -860,52 +884,147 @@ const Dashboard = () => {
                           <h4 className="text-sm font-medium text-[#c18742] mb-2">
                             Vaccinations
                           </h4>
-                          <div className="space-y-2">
-                            {pet.vaccinations.slice(0, 2).map((vaccination) => (
+                          <div className="space-y-3">
+                            {pet.vaccinations.map((vaccination) => (
                               <div
-                                key={vaccination.id}
-                                className="bg-[#f8f6f4] p-3 rounded-lg"
+                                key={vaccination._id}
+                                className="bg-[#f8f6f4] p-3 rounded-lg border border-transparent hover:border-[#e8d7ca] transition-all"
                               >
-                                <div className="flex justify-between items-start">
-                                  <div className="flex-1">
-                                    <div className="font-medium text-[#55423c] text-sm">
-                                      {vaccination.name}
+                                <div className="flex items-start gap-3">
+                                  <div className="flex-1 space-y-1">
+                                    <div className="font-semibold text-[#55423c] text-sm">
+                                      {vaccination.name} 
                                     </div>
                                     <div className="text-xs text-[#795225]">
                                       Given: {vaccination.dateGiven}
                                     </div>
                                     {vaccination.nextDueDate && (
-                                      <div className="text-xs text-[#c18742] font-medium mt-1">
+                                      <div className="text-xs text-[#c18742] font-semibold">
                                         Next Due: {vaccination.nextDueDate}
                                       </div>
                                     )}
                                   </div>
-                                  {vaccination.nextDueDate && (
-                                    <button
-                                      onClick={() =>
-                                        handleToggleHealthNotification(
-                                          pet.id,
-                                          "vaccination",
-                                          vaccination.id
-                                        )
-                                      }
-                                      className="p-1 hover:bg-white rounded transition-colors"
-                                      title={
-                                        vaccination.notificationsEnabled
-                                          ? "Notifications on"
-                                          : "Notifications off"
-                                      }
-                                    >
-                                      <Bell
-                                        size={16}
-                                        className={
-                                          vaccination.notificationsEnabled
-                                            ? "text-[#c18742] fill-[#c18742]"
-                                            : "text-[#795225]"
+                                  <div className="flex flex-col items-center gap-2">
+                                    <div className="flex gap-1">
+                                      <button
+                                        onClick={() => handleEditHealthRecord(pet, vaccination, 'vaccination')}
+                                        className="p-1 hover:bg-[#e8d7ca] rounded transition-colors"
+                                      >
+                                        <Edit size={16} className="text-[#795225]" />
+                                      </button>
+                                      <button
+                                        onClick={() => handleDeleteHealthRecord(pet._id, vaccination._id, 'vaccination')}
+                                        className="p-1 hover:bg-red-50 rounded transition-colors"
+                                      >
+                                        <Trash2 size={16} className="text-red-500" />
+                                      </button>
+                                    </div>
+                                    {vaccination.nextDueDate && (
+                                      <button
+                                        onClick={() =>
+                                          handleToggleHealthNotification(
+                                            pet._id,
+                                            "vaccination",
+                                            vaccination._id
+                                          )
                                         }
-                                      />
-                                    </button>
-                                  )}
+                                        className="p-1 hover:bg-white rounded transition-colors"
+                                        title={
+                                          vaccination.notificationsEnabled
+                                            ? "Notifications on"
+                                            : "Notifications off"
+                                        }
+                                      >
+                                        <Bell
+                                          size={16}
+                                          className={
+                                            vaccination.notificationsEnabled
+                                              ? "text-[#c18742] fill-current"
+                                              : "text-[#795225]"
+                                          }
+                                        />
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {pet.vetVisits && pet.vetVisits.length > 0 && (
+                        <div className="ml-2 mb-3">
+                          <h4 className="text-sm font-medium text-[#c18742] mb-2">
+                            Vet Visits
+                          </h4>
+                          <div className="space-y-3">
+                            {pet.vetVisits.map((visit) => (
+                              <div
+                                key={visit._id}
+                                className="bg-[#f8f6f4] p-3 rounded-lg border border-transparent hover:border-[#e8d7ca] transition-all"
+                              >
+                                <div className="flex items-start gap-3">
+                                  <div className="flex-1 space-y-1">
+                                    <div className="font-semibold text-[#55423c] text-sm">
+                                      {visit.reason}
+                                    </div>
+                                    <div className="text-xs text-[#795225]">
+                                      Visit Date: {visit.visitDate}
+                                    </div>
+                                    {visit.nextVisitDate && (
+                                      <div className="text-xs text-[#c18742] font-semibold">
+                                        Next Visit: {visit.nextVisitDate}
+                                      </div>
+                                    )}
+                                    {visit.veterinarian && (
+                                      <div className="text-xs text-[#795225]">
+                                        Vet: {visit.veterinarian}
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div className="flex flex-col items-center gap-2">
+                                    <div className="flex gap-1">
+                                      <button
+                                        onClick={() => handleEditHealthRecord(pet, visit, 'vetVisit')}
+                                        className="p-1 hover:bg-[#e8d7ca] rounded transition-colors"
+                                      >
+                                        <Edit size={16} className="text-[#795225]" />
+                                      </button>
+                                      <button
+                                        onClick={() => handleDeleteHealthRecord(pet._id, visit._id, 'vetVisit')}
+                                        className="p-1 hover:bg-red-50 rounded transition-colors"
+                                      >
+                                        <Trash2 size={16} className="text-red-500" />
+                                      </button>
+                                    </div>
+                                    {visit.nextVisitDate && (
+                                      <button
+                                        onClick={() =>
+                                          handleToggleHealthNotification(
+                                            pet._id,
+                                            "vetVisit",
+                                            visit._id
+                                          )
+                                        }
+                                        className="p-1 hover:bg-white rounded transition-colors"
+                                        title={
+                                          visit.notificationsEnabled
+                                            ? "Notifications on"
+                                            : "Notifications off"
+                                        }
+                                      >
+                                        <Bell
+                                          size={16}
+                                          className={
+                                            visit.notificationsEnabled
+                                              ? "text-[#c18742] fill-current"
+                                              : "text-[#795225]"
+                                          }
+                                        />
+                                      </button>
+                                    )}
+                                  </div>
                                 </div>
                               </div>
                             ))}
@@ -1093,3 +1212,4 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
+

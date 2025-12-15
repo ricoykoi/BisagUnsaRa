@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useMemo, useContext, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   Download,
   FileText,
@@ -23,6 +23,8 @@ import {
   Crown,
 } from "lucide-react";
 import { useSubscription } from "../context/useSubscriptionHook";
+import { getPets } from "../services/petService";
+import { AuthenticationContext } from "../context/AuthenticationContext";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
@@ -64,7 +66,7 @@ const generateRecurringSchedules = (baseSchedules, daysAhead = 30) => {
         id: `${schedule.originalScheduleId}-${idDate}`,
         date: new Date(date),
         isToday: date.toDateString() === today.toDateString(),
-        isCompleted: false,
+        isCompleted: schedule.isCompleted || false,
       });
     };
 
@@ -120,12 +122,22 @@ const Export = () => {
   const features = getPlanFeatures(currentPlan);
   const [isExporting, setIsExporting] = useState(false);
   const [exportFormat, setExportFormat] = useState("pdf");
+  const { user } = useContext(AuthenticationContext);
+  const [pets, setPets] = useState([]);
 
-  // Load pets from localStorage
-  const pets = useMemo(() => {
-    const saved = localStorage.getItem("pets");
-    return saved ? JSON.parse(saved) : [];
-  }, []);
+  useEffect(() => {
+    const fetchPets = async () => {
+      if (user?._id) {
+        try {
+          const userPets = await getPets(user._id);
+          setPets(userPets);
+        } catch (error) {
+          console.error("Failed to fetch pets for export:", error);
+        }
+      }
+    };
+    fetchPets();
+  }, [user]);
 
   // Generate all schedules from pets
   const allSchedules = useMemo(
@@ -133,9 +145,9 @@ const Export = () => {
       pets.flatMap((pet) =>
         (pet.schedules || []).map((schedule) => ({
           ...schedule,
-          originalScheduleId: schedule.id,
+          originalScheduleId: schedule._id,
           petName: pet.name,
-          petId: pet.id,
+          petId: pet._id,
         }))
       ),
     [pets]

@@ -1,5 +1,5 @@
-import React, { useState, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useRef, useEffect, useContext } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   LogOut,
   Home,
@@ -23,6 +23,13 @@ import {
   Info,
 } from "lucide-react";
 import { useSubscription } from "../context/useSubscriptionHook";
+import {
+  createPet,
+  getPets,
+  updatePet,
+  deletePet,
+} from "../services/petService";
+import { AuthenticationContext } from "../context/AuthenticationContext";
 
 // Enhanced Date Input Component
 const DateInput = ({ dateValue, onDateChange, label, required = false }) => {
@@ -66,18 +73,19 @@ const DateInput = ({ dateValue, onDateChange, label, required = false }) => {
 
 const MyPets = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { getPlanFeatures, currentPlan } = useSubscription();
   const features = getPlanFeatures(currentPlan);
-  const [pets, setPets] = useState(() => {
-    const saved = localStorage.getItem("pets");
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [pets, setPets] = useState([]);
   const [modalVisible, setModalVisible] = useState(false);
   const [scheduleModalVisible, setScheduleModalVisible] = useState(false);
   const [healthRecordsModalVisible, setHealthRecordsModalVisible] =
     useState(false);
+  const [profileModalVisible, setProfileModalVisible] = useState(false);
+
   const [activeTab, setActiveTab] = useState("vaccinations");
   const fileInputRef = useRef(null);
+  const { user } = useContext(AuthenticationContext);
 
   const maxPets = features.maxPets;
   const petsRemaining = Math.max(0, maxPets - pets.length);
@@ -89,6 +97,8 @@ const MyPets = () => {
     breed: "",
     age: "",
     photo: null,
+    fatherBreed: "",
+    motherBreed: "",
   });
 
   const handleImageChange = (e) => {
@@ -131,13 +141,46 @@ const MyPets = () => {
   const [editHealthRecordMode, setEditHealthRecordMode] = useState(false);
   const [selectedHealthRecord, setSelectedHealthRecord] = useState(null);
 
+  useEffect(() => {
+    const { state } = location;
+    if (state?.action === "editHealthRecord" && state.petId && state.recordId) {
+      const petToEdit = pets.find((p) => p._id === state.petId);
+      if (petToEdit) {
+        const recordType =
+          state.recordType === "vaccination" ? "vaccinations" : "vetVisits";
+        const recordToEdit = petToEdit[recordType]?.find(
+          (r) => r._id === state.recordId
+        );
+
+        if (recordToEdit) {
+          openHealthRecordsModal(petToEdit);
+          setActiveTab(recordType);
+          if (state.recordType === "vaccination") {
+            handleEditVaccination(recordToEdit);
+          } else {
+            handleEditVetVisit(recordToEdit);
+          }
+        }
+      }
+    }
+  }, [location, pets]);
+
+  useEffect(() => {
+    const fetchPets = async () => {
+      if (user?._id) {
+        try {
+          const userPets = await getPets(user._id);
+          setPets(userPets);
+        } catch (error) {
+          console.error("Failed to fetch pets:", error);
+        }
+      }
+    };
+    fetchPets();
+  }, [user]);
+
   const navigateTo = (route) => {
     navigate(route);
-  };
-
-  const savePets = (updatedPets) => {
-    setPets(updatedPets);
-    localStorage.setItem("pets", JSON.stringify(updatedPets));
   };
 
   const canAccessHealthRecords = () => {
@@ -176,6 +219,11 @@ const MyPets = () => {
     }
   };
 
+  const openProfileModal = (pet) => {
+    setSelectedPet(pet);
+    setProfileModalVisible(true);
+  };
+
   // Calculate schedule statistics
   const getScheduleStats = (pet) => {
     const today = new Date();
@@ -198,7 +246,7 @@ const MyPets = () => {
     };
   };
 
-  const handleAddPet = () => {
+  const handleAddPet = async () => {
     if (newPet.name && newPet.type && newPet.age) {
       if (!editMode && pets.length >= maxPets) {
         alert(
@@ -206,26 +254,38 @@ const MyPets = () => {
         );
         return;
       }
+      try {
+        if (editMode && selectedPet) {
+          const updatedPet = await updatePet(
+            selectedPet._id,
+            newPet,
+            user._id
+          );
+          setPets(
+            pets.map((p) => (p._id === selectedPet._id ? updatedPet.pet : p))
+          );
+        } else {
+          const response = await createPet(newPet, user._id);
+          setPets([...pets, response.pet]);
+        }
 
-      if (editMode && selectedPet) {
-        const updatedPets = pets.map((pet) =>
-          pet.id === selectedPet.id ? { ...pet, ...newPet } : pet
-        );
-        savePets(updatedPets);
-      } else {
-        const newPetObj = {
-          ...newPet,
-          id: Date.now().toString(),
-          schedules: [],
-          vaccinations: [],
-          vetVisits: [],
-        };
-        savePets([...pets, newPetObj]);
+        setNewPet({
+          name: "",
+          type: "",
+          breed: "",
+          age: "",
+          photo: null,
+          fatherBreed: "",
+          motherBreed: "",
+        });
+        setModalVisible(false);
+        setEditMode(false);
+      } catch (error) {
+        console.error("Failed to save pet:", error);
+        alert("Could not save pet. Please try again.");
       }
-
-      setNewPet({ name: "", type: "", breed: "", age: "", photo: null });
-      setModalVisible(false);
-      setEditMode(false);
+    } else {
+      alert("Please fill in all required fields: Pet Name, Pet Type, and Age.");
     }
   };
 
@@ -237,24 +297,31 @@ const MyPets = () => {
       breed: pet.breed || "",
       age: pet.age,
       photo: pet.photo,
+      fatherBreed: pet.fatherBreed || "",
+      motherBreed: pet.motherBreed || "",
     });
     setEditMode(true);
     setModalVisible(true);
   };
 
-  const handleDeletePet = (petId) => {
+  const handleDeletePet = async (petId) => {
     if (confirm("Are you sure you want to delete this pet?")) {
-      savePets(pets.filter((pet) => pet.id !== petId));
-      setModalVisible(false);
-      setEditMode(false);
-      setSelectedPet(null);
+      try {
+        await deletePet(petId, user._id);
+        setPets(pets.filter((pet) => pet._id !== petId));
+        setModalVisible(false);
+        setEditMode(false);
+        setSelectedPet(null);
+      } catch (error) {
+        console.error("Failed to delete pet:", error);
+        alert("Could not delete pet.");
+      }
     }
   };
 
   const openScheduleModal = (pet) => {
     setSelectedPet(pet);
     setEditScheduleMode(false);
-    setSelectedSchedule(null);
     setNewSchedule({
       type: "Feeding",
       hour: "8",
@@ -263,6 +330,7 @@ const MyPets = () => {
       frequency: "Daily",
       notes: "",
     });
+    setSelectedSchedule(null);
     setScheduleModalVisible(true);
   };
 
@@ -278,7 +346,7 @@ const MyPets = () => {
     return totalMinutes;
   };
 
-  const handleAddSchedule = () => {
+  const handleAddSchedule = async () => {
     if (
       selectedPet &&
       newSchedule.hour &&
@@ -286,33 +354,35 @@ const MyPets = () => {
       newSchedule.ampm
     ) {
       const time = `${newSchedule.hour}:${newSchedule.minute} ${newSchedule.ampm}`;
-      const scheduleData = {
-        ...newSchedule,
-        time: time,
-        id: editScheduleMode ? selectedSchedule.id : Date.now().toString(),
-        notificationsEnabled: true,
-      };
+      const scheduleData = { ...newSchedule, time };
 
-      const updatedPets = pets.map((pet) => {
-        if (pet.id === selectedPet.id) {
-          let updatedSchedules;
-          if (editScheduleMode) {
-            updatedSchedules = pet.schedules.map((schedule) =>
-              schedule.id === selectedSchedule.id ? scheduleData : schedule
-            );
-          } else {
-            updatedSchedules = [...pet.schedules, scheduleData];
-          }
-          updatedSchedules.sort(
-            (a, b) => parseTimeToMinutes(a.time) - parseTimeToMinutes(b.time)
-          );
-          return { ...pet, schedules: updatedSchedules };
-        }
-        return pet;
-      });
+      let updatedSchedules;
+      if (editScheduleMode) {
+        updatedSchedules = selectedPet.schedules.map((s) =>
+          s._id === selectedSchedule._id ? { ...s, ...scheduleData } : s
+        );
+      } else {
+        updatedSchedules = [...(selectedPet.schedules || []), scheduleData];
+      }
 
-      savePets(updatedPets);
-      setSelectedPet(updatedPets.find((p) => p.id === selectedPet.id));
+      try {
+        const response = await updatePet(
+          selectedPet._id,
+          { schedules: updatedSchedules },
+          user._id
+        );
+        const updatedPetFromServer = response.pet;
+        setPets(
+          pets.map((p) =>
+            p._id === selectedPet._id ? updatedPetFromServer : p
+          )
+        );
+        setSelectedPet(updatedPetFromServer);
+        setScheduleModalVisible(false);
+      } catch (error) {
+        console.error("Failed to save schedule:", error);
+        alert("Could not save schedule.");
+      }
       setNewSchedule({
         type: "Feeding",
         hour: "8",
@@ -323,13 +393,6 @@ const MyPets = () => {
       });
       setEditScheduleMode(false);
       setSelectedSchedule(null);
-      setScheduleModalVisible(false);
-
-      alert(
-        "Schedule " +
-          (editScheduleMode ? "updated" : "added") +
-          " successfully!"
-      );
     }
   };
 
@@ -353,15 +416,26 @@ const MyPets = () => {
     setScheduleModalVisible(true);
   };
 
-  const handleDeleteSchedule = (pet, scheduleId) => {
+  const handleDeleteSchedule = async (pet, scheduleId) => {
     if (confirm("Are you sure you want to delete this schedule?")) {
-      const updatedPets = pets.map((p) =>
-        p.id === pet.id
-          ? { ...p, schedules: p.schedules.filter((s) => s.id !== scheduleId) }
-          : p
+      const updatedSchedules = pet.schedules.filter(
+        (s) => s._id !== scheduleId
       );
-      savePets(updatedPets);
-      setSelectedPet(updatedPets.find((p) => p.id === pet.id));
+      try {
+        const response = await updatePet(
+          pet._id,
+          { schedules: updatedSchedules },
+          user._id
+        );
+        const updatedPetFromServer = response.pet;
+        setPets(
+          pets.map((p) => (p._id === pet._id ? updatedPetFromServer : p))
+        );
+        setSelectedPet(updatedPetFromServer);
+      } catch (error) {
+        console.error("Failed to delete schedule:", error);
+        alert("Could not delete schedule.");
+      }
     }
   };
 
@@ -374,7 +448,7 @@ const MyPets = () => {
     return d1 < d2;
   };
 
-  const handleAddVaccination = () => {
+  const handleAddVaccination = async () => {
     if (!newVaccination.name || !newVaccination.dateGiven) {
       alert("Please fill in all required fields (*)");
       return;
@@ -388,45 +462,35 @@ const MyPets = () => {
       return;
     }
 
-    const updatedPets = pets.map((pet) => {
-      if (pet.id === selectedPet.id) {
-        if (editHealthRecordMode) {
-          const updatedVaccinations = pet.vaccinations.map((vaccination) =>
-            vaccination.id === selectedHealthRecord.id
-              ? {
-                  ...newVaccination,
-                  id: selectedHealthRecord.id,
-                  notificationsEnabled: true,
-                }
-              : vaccination
-          );
-          return { ...pet, vaccinations: updatedVaccinations };
-        } else {
-          return {
-            ...pet,
-            vaccinations: [
-              ...pet.vaccinations,
-              {
-                ...newVaccination,
-                id: Date.now().toString(),
-                notificationsEnabled: true,
-              },
-            ],
-          };
-        }
-      }
-      return pet;
-    });
+    let updatedVaccinations;
+    if (editHealthRecordMode) {
+      updatedVaccinations = selectedPet.vaccinations.map((v) =>
+        v._id === selectedHealthRecord._id ? { ...v, ...newVaccination } : v
+      );
+    } else {
+      updatedVaccinations = [
+        ...(selectedPet.vaccinations || []),
+        newVaccination,
+      ];
+    }
 
-    savePets(updatedPets);
-    setSelectedPet(updatedPets.find((p) => p.id === selectedPet.id));
-    setNewVaccination({
-      name: "",
-      dateGiven: "",
-      nextDueDate: "",
-      veterinarian: "",
-      notes: "",
-    });
+    try {
+      const response = await updatePet(
+        selectedPet._id,
+        { vaccinations: updatedVaccinations },
+        user._id
+      );
+      const updatedPetFromServer = response.pet;
+      setPets(
+        pets.map((p) => (p._id === selectedPet._id ? updatedPetFromServer : p))
+      );
+      setSelectedPet(updatedPetFromServer);
+    } catch (error) {
+      console.error("Failed to save vaccination:", error);
+      alert("Could not save vaccination record.");
+    }
+
+    setNewVaccination({ name: "", dateGiven: "", nextDueDate: "", veterinarian: "", notes: "" });
     setEditHealthRecordMode(false);
     setSelectedHealthRecord(null);
   };
@@ -443,79 +507,63 @@ const MyPets = () => {
     setSelectedHealthRecord(vaccination);
   };
 
-  const handleDeleteVaccination = (vaccinationId) => {
+  const handleDeleteVaccination = async (vaccinationId) => {
     if (confirm("Are you sure you want to delete this vaccination record?")) {
-      const updatedPets = pets.map((pet) => {
-        if (pet.id === selectedPet.id) {
-          return {
-            ...pet,
-            vaccinations: pet.vaccinations.filter(
-              (v) => v.id !== vaccinationId
-            ),
-          };
-        }
-        return pet;
-      });
-      savePets(updatedPets);
-      setSelectedPet(updatedPets.find((p) => p.id === selectedPet.id));
+      const updatedVaccinations = selectedPet.vaccinations.filter(
+        (v) => v._id !== vaccinationId
+      );
+      try {
+        const response = await updatePet(
+          selectedPet._id,
+          { vaccinations: updatedVaccinations },
+          user._id
+        );
+        const updatedPetFromServer = response.pet;
+        setPets(
+          pets.map((p) => (p._id === selectedPet._id ? updatedPetFromServer : p))
+        );
+        setSelectedPet(updatedPetFromServer);
+      } catch (error) {
+        console.error("Failed to delete vaccination:", error);
+        alert("Could not delete vaccination record.");
+      }
     }
   };
 
-  const handleAddVetVisit = () => {
+  const handleAddVetVisit = async () => {
     if (!newVetVisit.visitDate || !newVetVisit.reason) {
       alert("Please fill in all required fields (*)");
       return;
     }
 
-    if (
-      newVetVisit.nextVisitDate &&
-      isDateBefore(newVetVisit.nextVisitDate, newVetVisit.visitDate)
-    ) {
-      alert("Next visit date cannot be before the visit date.");
-      return;
+    let updatedVetVisits;
+    if (editHealthRecordMode) {
+      updatedVetVisits = selectedPet.vetVisits.map((v) =>
+        v._id === selectedHealthRecord._id ? { ...v, ...newVetVisit } : v
+      );
+    } else {
+      updatedVetVisits = [...(selectedPet.vetVisits || []), newVetVisit];
     }
 
-    const updatedPets = pets.map((pet) => {
-      if (pet.id === selectedPet.id) {
-        if (editHealthRecordMode) {
-          const updatedVetVisits = pet.vetVisits.map((visit) =>
-            visit.id === selectedHealthRecord.id
-              ? {
-                  ...newVetVisit,
-                  id: selectedHealthRecord.id,
-                  notificationsEnabled: true,
-                }
-              : visit
-          );
-          return { ...pet, vetVisits: updatedVetVisits };
-        } else {
-          return {
-            ...pet,
-            vetVisits: [
-              ...pet.vetVisits,
-              {
-                ...newVetVisit,
-                id: Date.now().toString(),
-                notificationsEnabled: true,
-              },
-            ],
-          };
-        }
-      }
-      return pet;
-    });
+    try {
+      const response = await updatePet(
+        selectedPet._id,
+        { vetVisits: updatedVetVisits },
+        user._id
+      );
+      const updatedPetFromServer = response.pet;
+      setPets(
+        pets.map((p) =>
+          p._id === selectedPet._id ? updatedPetFromServer : p
+        )
+      );
+      setSelectedPet(updatedPetFromServer);
+    } catch (error) {
+      console.error("Failed to save vet visit:", error);
+      alert("Could not save vet visit record.");
+    }
 
-    savePets(updatedPets);
-    setSelectedPet(updatedPets.find((p) => p.id === selectedPet.id));
-    setNewVetVisit({
-      visitDate: "",
-      reason: "",
-      veterinarian: "",
-      nextVisitDate: "",
-      diagnosis: "",
-      treatment: "",
-      notes: "",
-    });
+    setNewVetVisit({ visitDate: "", reason: "", veterinarian: "", nextVisitDate: "", diagnosis: "", treatment: "", notes: "" });
     setEditHealthRecordMode(false);
     setSelectedHealthRecord(null);
   };
@@ -534,22 +582,30 @@ const MyPets = () => {
     setSelectedHealthRecord(visit);
   };
 
-  const handleDeleteVetVisit = (vetVisitId) => {
+  const handleDeleteVetVisit = async (vetVisitId) => {
     if (confirm("Are you sure you want to delete this vet visit record?")) {
-      const updatedPets = pets.map((pet) => {
-        if (pet.id === selectedPet.id) {
-          return {
-            ...pet,
-            vetVisits: pet.vetVisits.filter((v) => v.id !== vetVisitId),
-          };
-        }
-        return pet;
-      });
-      savePets(updatedPets);
-      setSelectedPet(updatedPets.find((p) => p.id === selectedPet.id));
+      const updatedVetVisits = selectedPet.vetVisits.filter(
+        (v) => v._id !== vetVisitId
+      );
+      try {
+        const response = await updatePet(
+          selectedPet._id,
+          { vetVisits: updatedVetVisits },
+          user._id
+        );
+        const updatedPetFromServer = response.pet;
+        setPets(
+          pets.map((p) =>
+            p._id === selectedPet._id ? updatedPetFromServer : p
+          )
+        );
+        setSelectedPet(updatedPetFromServer);
+      } catch (error) {
+        console.error("Failed to delete vet visit:", error);
+        alert("Could not delete vet visit record.");
+      }
     }
   };
-
   return (
     <div className="min-h-screen bg-[#f8f6f4]">
       {/* Header Section */}
@@ -617,7 +673,8 @@ const MyPets = () => {
               const stats = getScheduleStats(pet);
               return (
                 <div
-                  key={pet.id}
+                  key={pet._id}
+                  onClick={() => openProfileModal(pet)}
                   className="bg-white rounded-xl shadow-sm border border-[#e8d7ca] overflow-hidden"
                 >
                   {/* Pet Header */}
@@ -626,6 +683,7 @@ const MyPets = () => {
                       <div className="mr-4">
                         {pet.photo ? (
                           <img
+                            onClick={() => openProfileModal(pet)}
                             src={pet.photo}
                             alt={pet.name}
                             className="w-16 h-16 rounded-full object-cover border-2 border-[#ffd68e]"
@@ -694,21 +752,30 @@ const MyPets = () => {
                   {/* Pet Actions */}
                   <div className="grid grid-cols-3 gap-1 p-3 border-b border-[#e8d7ca] bg-[#f8f6f4]">
                     <button
-                      onClick={() => handleEditPet(pet)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEditPet(pet);
+                      }}
                       className="flex items-center justify-center gap-1 bg-white text-[#795225] py-2 rounded-lg font-medium hover:bg-[#f8f6f4] transition-colors border border-[#e8d7ca]"
                     >
                       <Edit size={16} />
                       <span className="text-sm">Edit</span>
                     </button>
                     <button
-                      onClick={() => openScheduleModal(pet)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openScheduleModal(pet);
+                      }}
                       className="flex items-center justify-center gap-1 bg-white text-[#795225] py-2 rounded-lg font-medium hover:bg-[#f8f6f4] transition-colors border border-[#e8d7ca]"
                     >
                       <Clock size={16} />
                       <span className="text-sm">Schedules</span>
                     </button>
                     <button
-                      onClick={() => openHealthRecordsModal(pet)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openHealthRecordsModal(pet);
+                      }}
                       className={`flex items-center justify-center gap-1 py-2 rounded-lg font-medium transition-colors ${
                         features.hasHealthRecords
                           ? "bg-[#ffd68e] text-[#55423c] hover:bg-[#e6c27d]"
@@ -730,7 +797,10 @@ const MyPets = () => {
                           Upcoming Schedules
                         </h4>
                         <button
-                          onClick={() => openScheduleModal(pet)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openScheduleModal(pet);
+                          }}
                           className="text-sm text-[#c18742] font-medium hover:text-[#55423c] transition-colors"
                         >
                           View All
@@ -739,7 +809,7 @@ const MyPets = () => {
                       <div className="space-y-2">
                         {pet.schedules.slice(0, 3).map((schedule) => (
                           <div
-                            key={schedule.id}
+                            key={schedule._id}
                             className="flex items-center justify-between p-3 rounded-lg border border-[#e8d7ca] hover:bg-[#f8f6f4] transition-colors"
                           >
                             <div className="flex items-center gap-3">
@@ -756,17 +826,22 @@ const MyPets = () => {
                             </div>
                             <div className="flex items-center gap-2">
                               <button
-                                onClick={() =>
-                                  handleEditSchedule(pet, schedule)
-                                }
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleEditSchedule(pet, schedule);
+                                }}
                                 className="p-1 hover:bg-[#e8d7ca] rounded transition-colors"
                               >
                                 <Edit size={16} className="text-[#795225]" />
                               </button>
                               <button
-                                onClick={() =>
-                                  handleDeleteSchedule(pet, schedule.id)
-                                }
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteSchedule(
+                                    pet,
+                                    schedule._id
+                                  );
+                                }}
                                 className="p-1 hover:bg-red-50 rounded transition-colors"
                               >
                                 <Trash2 size={16} className="text-red-500" />
@@ -801,6 +876,8 @@ const MyPets = () => {
                   breed: "",
                   age: "",
                   photo: null,
+                  fatherBreed: "",
+                  motherBreed: "",
                 });
                 setModalVisible(true);
               }}
@@ -824,6 +901,8 @@ const MyPets = () => {
                   breed: "",
                   age: "",
                   photo: null,
+                  fatherBreed: "",
+                  motherBreed: "",
                 });
                 setModalVisible(true);
               }}
@@ -919,6 +998,26 @@ const MyPets = () => {
 
                 <input
                   type="text"
+                  placeholder="Father's Breed (optional)"
+                  value={newPet.fatherBreed}
+                  onChange={(e) =>
+                    setNewPet({ ...newPet, fatherBreed: e.target.value })
+                  }
+                  className="w-full border border-[#e8d7ca] rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#c18742] focus:border-transparent"
+                />
+
+                <input
+                  type="text"
+                  placeholder="Mother's Breed (optional)"
+                  value={newPet.motherBreed}
+                  onChange={(e) =>
+                    setNewPet({ ...newPet, motherBreed: e.target.value })
+                  }
+                  className="w-full border border-[#e8d7ca] rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#c18742] focus:border-transparent"
+                />
+
+                <input
+                  type="text"
                   placeholder="Age*"
                   value={newPet.age}
                   onChange={(e) =>
@@ -944,7 +1043,7 @@ const MyPets = () => {
                         if (
                           confirm("Are you sure you want to delete this pet?")
                         ) {
-                          handleDeletePet(selectedPet.id);
+                          handleDeletePet(selectedPet._id);
                         }
                       }}
                       className="flex-1 bg-red-500 text-white py-3 rounded-lg font-medium hover:bg-red-600 transition-colors"
@@ -1112,10 +1211,7 @@ const MyPets = () => {
                             "Are you sure you want to delete this schedule?"
                           )
                         ) {
-                          handleDeleteSchedule(
-                            selectedPet,
-                            selectedSchedule.id
-                          );
+                          handleDeleteSchedule(selectedPet, selectedSchedule._id);
                         }
                       }}
                       className="flex-1 bg-red-500 text-white py-3 rounded-lg font-medium hover:bg-red-600 transition-colors"
@@ -1383,6 +1479,78 @@ const MyPets = () => {
                 >
                   {editHealthRecordMode ? "Update" : "Add"}
                 </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Pet Profile Modal */}
+      {profileModalVisible && selectedPet && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl w-full max-w-md overflow-hidden shadow-lg">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-bold text-[#55423c]">
+                  Pet Profile
+                </h2>
+                <button
+                  onClick={() => setProfileModalVisible(false)}
+                  className="p-1 hover:bg-[#f8f6f4] rounded transition-colors"
+                >
+                  <X size={24} className="text-[#795225]" />
+                </button>
+              </div>
+
+              <div className="text-center">
+                {selectedPet.photo ? (
+                  <img
+                    src={selectedPet.photo}
+                    alt={selectedPet.name}
+                    className="w-32 h-32 mx-auto rounded-full object-cover border-4 border-[#ffd68e] shadow-lg"
+                  />
+                ) : (
+                  <div className="w-32 h-32 mx-auto rounded-full bg-gradient-to-br from-[#ffd68e] to-[#c18742] flex items-center justify-center border-4 border-white shadow-lg">
+                    <span className="text-5xl font-bold text-white">
+                      {selectedPet.name.charAt(0)}
+                    </span>
+                  </div>
+                )}
+                <h3 className="text-2xl font-bold text-[#55423c] mt-4">
+                  {selectedPet.name}
+                </h3>
+                <p className="text-md text-[#795225]">
+                  {selectedPet.breed || selectedPet.type}
+                </p>
+              </div>
+
+              <div className="mt-6 space-y-3">
+                <div className="flex justify-between p-3 bg-[#f8f6f4] rounded-lg">
+                  <span className="font-medium text-[#795225]">Age</span>
+                  <span className="font-bold text-[#55423c]">
+                    {selectedPet.age} {selectedPet.age === "1" ? "year" : "years"}
+                  </span>
+                </div>
+                {selectedPet.fatherBreed && (
+                  <div className="flex justify-between p-3 bg-[#f8f6f4] rounded-lg">
+                    <span className="font-medium text-[#795225]">
+                      Father's Breed
+                    </span>
+                    <span className="font-bold text-[#55423c]">
+                      {selectedPet.fatherBreed}
+                    </span>
+                  </div>
+                )}
+                {selectedPet.motherBreed && (
+                  <div className="flex justify-between p-3 bg-[#f8f6f4] rounded-lg">
+                    <span className="font-medium text-[#795225]">
+                      Mother's Breed
+                    </span>
+                    <span className="font-bold text-[#55423c]">
+                      {selectedPet.motherBreed}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           </div>

@@ -2,10 +2,21 @@ import React, { useContext } from "react";
 import { Home, PawPrint, Crown, Download, User, LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { AuthenticationContext } from "../context/AuthenticationContext";
+import { useSubscription } from "../context/useSubscriptionHook";
 
 const Sidebar = () => {
   const navigate = useNavigate();
   const { user, logout } = useContext(AuthenticationContext);
+  const { currentPlan } = useSubscription();
+  
+  // Format plan name for display
+  const getPlanDisplayName = (plan) => {
+    if (!plan) return "Free Plan User";
+    if (plan === "Free Mode") return "Free Plan User";
+    if (plan === "Premium Tier 1") return "Premium Tier 1 User";
+    if (plan === "Premium Tier 2") return "Premium Tier 2 User";
+    return `${plan} User`;
+  };
 
   const navigateTo = (path) => {
     navigate(path);
@@ -57,15 +68,26 @@ const Sidebar = () => {
       {/* Bottom user and logout section */}
       <div className="border-t border-gray-200 p-4">
         {/* User info */}
-        <div className="flex items-center gap-3 p-3 mb-4 rounded-lg bg-gray-50">
-          <div className="w-8 h-8 rounded-full bg-[#ffd68e] flex items-center justify-center">
-            <User size={18} className="text-[#795225]" />
-          </div>
+        <button
+          onClick={() => navigateTo("/settings")}
+          className="flex items-center gap-3 p-3 mb-4 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors w-full text-left"
+        >
+          {user.profilePicture ? (
+            <img
+              src={user.profilePicture}
+              alt={user.username}
+              className="w-8 h-8 rounded-full object-cover border-2 border-[#ffd68e]"
+            />
+          ) : (
+            <div className="w-8 h-8 rounded-full bg-[#ffd68e] flex items-center justify-center">
+              <User size={18} className="text-[#795225]" />
+            </div>
+          )}
           <div>
             <p className="font-medium text-gray-800">{user.username}</p>
-            <p className="text-xs text-gray-500">Premium User</p>
+            <p className="text-xs text-gray-500">{getPlanDisplayName(currentPlan)}</p>
           </div>
-        </div>
+        </button>
 
         {/* Logout button */}
         <button

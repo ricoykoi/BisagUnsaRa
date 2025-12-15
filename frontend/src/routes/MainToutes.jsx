@@ -4,7 +4,6 @@ import Dashboard from "../pages/Dashboard";
 import MyPets from "../pages/MyPets";
 import Plans from "../pages/Plans";
 import Export from "../pages/Export";
-import Settings from "../pages/Settings";
 import { SubscriptionProvider } from "../context/SubscriptionContext";
 import MainLayout from "../layout/MainLayout";
 
@@ -25,9 +24,13 @@ const MainRoutes = () => {
           <Route
             path="/mypets"
             element={
-              <MainLayout>
-                <MyPets />
-              </MainLayout>
+              <MyPets>
+                {({ openPetModal }) => (
+                  <MainLayout openPetModal={openPetModal}>
+                    {/* MyPets content is rendered via MainLayout's children prop */}
+                  </MainLayout>
+                )}
+              </MyPets>
             }
           />
           <Route
@@ -43,14 +46,6 @@ const MainRoutes = () => {
             element={
               <MainLayout>
                 <Export />
-              </MainLayout>
-            }
-          />
-          <Route
-            path="/settings"
-            element={
-              <MainLayout>
-                <Settings />
               </MainLayout>
             }
           />
