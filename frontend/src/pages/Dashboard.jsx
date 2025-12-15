@@ -143,7 +143,10 @@ const Dashboard = () => {
           setPets(userPets || []);
         } catch (error) {
           console.error("Failed to fetch pets:", error);
-          console.error("Error details:", error.response?.data || error.message);
+          console.error(
+            "Error details:",
+            error.response?.data || error.message
+          );
           setPets([]);
         }
       } else {
@@ -257,7 +260,7 @@ const Dashboard = () => {
       return;
 
     const time = `${editFormData.hour}:${editFormData.minute} ${editFormData.ampm}`;
-    const petToUpdate = pets.find(p => p._id === editingSchedule.petId);
+    const petToUpdate = pets.find((p) => p._id === editingSchedule.petId);
     if (!petToUpdate) return;
 
     const updatedSchedules = petToUpdate.schedules.map((sched) =>
@@ -267,8 +270,12 @@ const Dashboard = () => {
     );
 
     try {
-      const response = await updatePet(petToUpdate._id, { schedules: updatedSchedules }, user._id);
-      setPets(pets.map(p => p._id === petToUpdate._id ? response.pet : p));
+      const response = await updatePet(
+        petToUpdate._id,
+        { schedules: updatedSchedules },
+        user._id
+      );
+      setPets(pets.map((p) => (p._id === petToUpdate._id ? response.pet : p)));
     } catch (error) {
       console.error("Failed to update schedule:", error);
       alert("Could not update schedule.");
@@ -276,13 +283,12 @@ const Dashboard = () => {
 
     setEditModalVisible(false);
     setEditingSchedule(null);
-
   };
 
   const handleDeleteSchedule = async (schedule) => {
     if (!confirm("Delete this schedule?")) return;
 
-    const petToUpdate = pets.find(p => p._id === schedule.petId);
+    const petToUpdate = pets.find((p) => p._id === schedule.petId);
     if (!petToUpdate) return;
 
     const updatedSchedules = petToUpdate.schedules.filter(
@@ -290,8 +296,12 @@ const Dashboard = () => {
     );
 
     try {
-      const response = await updatePet(petToUpdate._id, { schedules: updatedSchedules }, user._id);
-      setPets(pets.map(p => p._id === petToUpdate._id ? response.pet : p));
+      const response = await updatePet(
+        petToUpdate._id,
+        { schedules: updatedSchedules },
+        user._id
+      );
+      setPets(pets.map((p) => (p._id === petToUpdate._id ? response.pet : p)));
     } catch (error) {
       console.error("Failed to delete schedule:", error);
       alert("Could not delete schedule.");
@@ -310,8 +320,12 @@ const Dashboard = () => {
     );
 
     try {
-      const response = await updatePet(petToUpdate._id, { schedules: updatedSchedules }, user._id);
-      setPets(pets.map(p => p._id === petToUpdate._id ? response.pet : p));
+      const response = await updatePet(
+        petToUpdate._id,
+        { schedules: updatedSchedules },
+        user._id
+      );
+      setPets(pets.map((p) => (p._id === petToUpdate._id ? response.pet : p)));
     } catch (error) {
       console.error("Failed to toggle completion:", error);
       alert("Could not update schedule status.");
@@ -319,7 +333,7 @@ const Dashboard = () => {
   };
 
   const handleToggleNotification = async (schedule) => {
-    const petToUpdate = pets.find(p => p._id === schedule.petId);
+    const petToUpdate = pets.find((p) => p._id === schedule.petId);
     if (!petToUpdate) return;
 
     const updatedSchedules = petToUpdate.schedules.map((sched) =>
@@ -329,49 +343,76 @@ const Dashboard = () => {
     );
 
     try {
-      const response = await updatePet(petToUpdate._id, { schedules: updatedSchedules }, user._id);
-      setPets(pets.map(p => p._id === petToUpdate._id ? response.pet : p));
+      const response = await updatePet(
+        petToUpdate._id,
+        { schedules: updatedSchedules },
+        user._id
+      );
+      setPets(pets.map((p) => (p._id === petToUpdate._id ? response.pet : p)));
     } catch (error) {
       console.error("Failed to toggle notification:", error);
     }
   };
 
-  const handleToggleHealthNotification = async (petId, recordType, recordId) => {
-    const petToUpdate = pets.find(p => p._id === petId);
+  const handleToggleHealthNotification = async (
+    petId,
+    recordType,
+    recordId
+  ) => {
+    const petToUpdate = pets.find((p) => p._id === petId);
     if (!petToUpdate) return;
 
     let updatedRecords;
-    const recordKey = recordType === 'vaccination' ? 'vaccinations' : 'vetVisits';
+    const recordKey =
+      recordType === "vaccination" ? "vaccinations" : "vetVisits";
 
-    updatedRecords = petToUpdate[recordKey].map(record =>
+    updatedRecords = petToUpdate[recordKey].map((record) =>
       record._id === recordId
         ? { ...record, notificationsEnabled: !record.notificationsEnabled }
         : record
     );
 
     try {
-      const response = await updatePet(petId, { [recordKey]: updatedRecords }, user._id);
-      setPets(pets.map(p => p._id === petId ? response.pet : p));
+      const response = await updatePet(
+        petId,
+        { [recordKey]: updatedRecords },
+        user._id
+      );
+      setPets(pets.map((p) => (p._id === petId ? response.pet : p)));
     } catch (error) {
       console.error("Failed to toggle health notification:", error);
     }
   };
 
   const handleEditHealthRecord = (pet, record, type) => {
-    navigate('/mypets', { state: { action: 'editHealthRecord', petId: pet._id, recordId: record._id, recordType: type } });
+    navigate("/mypets", {
+      state: {
+        action: "editHealthRecord",
+        petId: pet._id,
+        recordId: record._id,
+        recordType: type,
+      },
+    });
   };
 
   const handleDeleteHealthRecord = async (petId, recordId, recordType) => {
     if (confirm(`Are you sure you want to delete this ${recordType} record?`)) {
-      const petToUpdate = pets.find(p => p._id === petId);
+      const petToUpdate = pets.find((p) => p._id === petId);
       if (!petToUpdate) return;
 
-      const recordKey = recordType === 'vaccination' ? 'vaccinations' : 'vetVisits';
-      const updatedRecords = petToUpdate[recordKey].filter(r => r._id !== recordId);
+      const recordKey =
+        recordType === "vaccination" ? "vaccinations" : "vetVisits";
+      const updatedRecords = petToUpdate[recordKey].filter(
+        (r) => r._id !== recordId
+      );
 
       try {
-        const response = await updatePet(petId, { [recordKey]: updatedRecords }, user._id);
-        setPets(pets.map(p => p._id === petId ? response.pet : p));
+        const response = await updatePet(
+          petId,
+          { [recordKey]: updatedRecords },
+          user._id
+        );
+        setPets(pets.map((p) => (p._id === petId ? response.pet : p)));
       } catch (error) {
         console.error("Failed to delete health record:", error);
         alert("Could not delete health record.");
@@ -388,9 +429,10 @@ const Dashboard = () => {
 
   // Calculate today's tasks - matching Export.jsx
   const todayTasks = useMemo(() => todaySchedules.length, [todaySchedules]);
-  const completedTasks = useMemo(() => todaySchedules.filter(
-    (schedule) => schedule.isCompleted
-  ).length, [todaySchedules]);
+  const completedTasks = useMemo(
+    () => todaySchedules.filter((schedule) => schedule.isCompleted).length,
+    [todaySchedules]
+  );
 
   // Calculate tasks completion percentage
   const completionPercentage =
@@ -893,7 +935,7 @@ const Dashboard = () => {
                                 <div className="flex items-start gap-3">
                                   <div className="flex-1 space-y-1">
                                     <div className="font-semibold text-[#55423c] text-sm">
-                                      {vaccination.name} 
+                                      {vaccination.name}
                                     </div>
                                     <div className="text-xs text-[#795225]">
                                       Given: {vaccination.dateGiven}
@@ -907,16 +949,34 @@ const Dashboard = () => {
                                   <div className="flex flex-col items-center gap-2">
                                     <div className="flex gap-1">
                                       <button
-                                        onClick={() => handleEditHealthRecord(pet, vaccination, 'vaccination')}
+                                        onClick={() =>
+                                          handleEditHealthRecord(
+                                            pet,
+                                            vaccination,
+                                            "vaccination"
+                                          )
+                                        }
                                         className="p-1 hover:bg-[#e8d7ca] rounded transition-colors"
                                       >
-                                        <Edit size={16} className="text-[#795225]" />
+                                        <Edit
+                                          size={16}
+                                          className="text-[#795225]"
+                                        />
                                       </button>
                                       <button
-                                        onClick={() => handleDeleteHealthRecord(pet._id, vaccination._id, 'vaccination')}
+                                        onClick={() =>
+                                          handleDeleteHealthRecord(
+                                            pet._id,
+                                            vaccination._id,
+                                            "vaccination"
+                                          )
+                                        }
                                         className="p-1 hover:bg-red-50 rounded transition-colors"
                                       >
-                                        <Trash2 size={16} className="text-red-500" />
+                                        <Trash2
+                                          size={16}
+                                          className="text-red-500"
+                                        />
                                       </button>
                                     </div>
                                     {vaccination.nextDueDate && (
@@ -986,16 +1046,34 @@ const Dashboard = () => {
                                   <div className="flex flex-col items-center gap-2">
                                     <div className="flex gap-1">
                                       <button
-                                        onClick={() => handleEditHealthRecord(pet, visit, 'vetVisit')}
+                                        onClick={() =>
+                                          handleEditHealthRecord(
+                                            pet,
+                                            visit,
+                                            "vetVisit"
+                                          )
+                                        }
                                         className="p-1 hover:bg-[#e8d7ca] rounded transition-colors"
                                       >
-                                        <Edit size={16} className="text-[#795225]" />
+                                        <Edit
+                                          size={16}
+                                          className="text-[#795225]"
+                                        />
                                       </button>
                                       <button
-                                        onClick={() => handleDeleteHealthRecord(pet._id, visit._id, 'vetVisit')}
+                                        onClick={() =>
+                                          handleDeleteHealthRecord(
+                                            pet._id,
+                                            visit._id,
+                                            "vetVisit"
+                                          )
+                                        }
                                         className="p-1 hover:bg-red-50 rounded transition-colors"
                                       >
-                                        <Trash2 size={16} className="text-red-500" />
+                                        <Trash2
+                                          size={16}
+                                          className="text-red-500"
+                                        />
                                       </button>
                                     </div>
                                     {visit.nextVisitDate && (
@@ -1212,4 +1290,3 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
-

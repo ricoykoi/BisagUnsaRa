@@ -31,7 +31,7 @@ const Plans = () => {
     setSelectedPlan(currentPlan);
     console.log("Current plan updated:", currentPlan);
   }, [currentPlan]);
-  
+
   // Debug: Log when selectedPlan changes
   useEffect(() => {
     console.log("Selected plan changed:", selectedPlan);
@@ -50,19 +50,19 @@ const Plans = () => {
   const handleSubscribe = async (e) => {
     e?.preventDefault();
     e?.stopPropagation();
-    
+
     console.log("Subscribe clicked:", { selectedPlan, currentPlan });
-    
+
     if (!selectedPlan) {
       alert("Please select a plan first.");
       return;
     }
-    
+
     try {
       console.log("Attempting to update plan to:", selectedPlan);
       const response = await upgradePlan(selectedPlan);
       console.log("Plan update response:", response);
-      
+
       if (selectedPlan === currentPlan) {
         alert(
           `✓ Subscription Confirmed\nYour ${selectedPlan} subscription has been renewed and saved!`
@@ -72,14 +72,17 @@ const Plans = () => {
           `✓ Subscription Updated\nYou are now subscribed to ${selectedPlan}!`
         );
       }
-      
+
       // Small delay to ensure state is updated
       setTimeout(() => {
         navigate("/dashboard");
       }, 100);
     } catch (error) {
       console.error("Subscription update failed:", error);
-      const errorMessage = error.response?.data?.message || error.message || "Failed to update subscription. Please try again.";
+      const errorMessage =
+        error.response?.data?.message ||
+        error.message ||
+        "Failed to update subscription. Please try again.";
       alert(`Error: ${errorMessage}`);
     }
   };
@@ -278,7 +281,8 @@ const Plans = () => {
         <div className="mb-10">
           {selectedPlan && selectedPlan !== currentPlan && (
             <div className="text-center mb-3 text-sm text-[#795225]">
-              Selected: <span className="font-bold text-[#55423c]">{selectedPlan}</span>
+              Selected:{" "}
+              <span className="font-bold text-[#55423c]">{selectedPlan}</span>
             </div>
           )}
           <button
@@ -286,7 +290,12 @@ const Plans = () => {
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              console.log("Button clicked - selectedPlan:", selectedPlan, "currentPlan:", currentPlan);
+              console.log(
+                "Button clicked - selectedPlan:",
+                selectedPlan,
+                "currentPlan:",
+                currentPlan
+              );
               handleSubscribe(e);
             }}
             disabled={!selectedPlan}

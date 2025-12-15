@@ -2,6 +2,7 @@ import React, { useContext, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { AuthenticationContext } from "../../context/AuthenticationContext";
 import { registerUser } from "../../services/userService";
+import logo from "/src/assets/furfurlogo.png";
 
 // Color scheme constants
 const COLORS = {
@@ -96,7 +97,7 @@ const Register = () => {
         {/* Logo Section */}
         <div className="text-center mb-8">
           <img
-            src="/src/assets/furfurlogo.png"
+            src={logo}
             alt="FurFur Logo"
             className="w-48 h-48 mx-auto mb-4 rounded-full shadow-lg object-cover"
           />

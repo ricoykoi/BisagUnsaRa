@@ -2,14 +2,15 @@ import React, { useContext } from "react";
 import { User, Settings } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { AuthenticationContext } from "../context/AuthenticationContext";
-import { useSubscription } from "../context/useSubscriptionHook";
+import { SubscriptionContext } from "../context/SubscriptionContextDef";
+import logo from "../assets/furfurlogo.png";
 import NotificationDropdown from "./NotificationDropdown";
 
 const Header = () => {
   const navigate = useNavigate();
   const { user } = useContext(AuthenticationContext);
-  const { currentPlan } = useSubscription();
-  
+  const { currentPlan } = useContext(SubscriptionContext);
+
   // Format plan name for display
   const getPlanDisplayName = (plan) => {
     if (!plan) return "Free Plan User";
@@ -23,7 +24,6 @@ const Header = () => {
     navigate("/settings");
   };
 
-
   const handleSettingsClick = () => {
     navigate("/settings");
   };
@@ -35,7 +35,7 @@ const Header = () => {
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-[#ffd68e] flex items-center justify-center">
             <img
-              src="/src/assets/furfurlogo.png"
+              src={logo}
               alt="FurFur Logo"
               className="w-12 h-12 object-contain"
             />
@@ -80,7 +80,9 @@ const Header = () => {
             )}
             <div className="text-left">
               <p className="font-medium text-sm">{user?.username}</p>
-              <p className="text-xs text-[#e8d7ca] opacity-80">{getPlanDisplayName(currentPlan)}</p>
+              <p className="text-xs text-[#e8d7ca] opacity-80">
+                {getPlanDisplayName(currentPlan)}
+              </p>
             </div>
           </button>
         </div>

@@ -8,6 +8,7 @@ import {
   dismissUpdate,
   checkAndCreateNotifications,
 } from "../services/updateService";
+import { useLocation } from "react-router-dom";
 
 const NotificationDropdown = () => {
   const { user } = useContext(AuthenticationContext);
@@ -99,7 +100,9 @@ const NotificationDropdown = () => {
   const handleMarkAsRead = async (updateId) => {
     try {
       await markUpdateAsRead(updateId);
-      setUpdates(updates.map(u => u._id === updateId ? { ...u, isRead: true } : u));
+      setUpdates(
+        updates.map((u) => (u._id === updateId ? { ...u, isRead: true } : u))
+      );
       setUnreadCount(Math.max(0, unreadCount - 1));
     } catch (error) {
       console.error("Failed to mark as read:", error);
@@ -112,7 +115,7 @@ const NotificationDropdown = () => {
 
     try {
       await markAllUpdatesAsRead(user._id);
-      setUpdates(updates.map(u => ({ ...u, isRead: true })));
+      setUpdates(updates.map((u) => ({ ...u, isRead: true })));
       setUnreadCount(0);
     } catch (error) {
       console.error("Failed to mark all as read:", error);
@@ -123,8 +126,8 @@ const NotificationDropdown = () => {
   const handleDismiss = async (updateId) => {
     try {
       await dismissUpdate(updateId);
-      setUpdates(updates.filter(u => u._id !== updateId));
-      const dismissed = updates.find(u => u._id === updateId);
+      setUpdates(updates.filter((u) => u._id !== updateId));
+      const dismissed = updates.find((u) => u._id === updateId);
       if (dismissed && !dismissed.isRead) {
         setUnreadCount(Math.max(0, unreadCount - 1));
       }
@@ -202,7 +205,13 @@ const NotificationDropdown = () => {
                       <div className="flex-1">
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex-1">
-                            <p className={`font-semibold text-sm ${!update.isRead ? "text-[#55423c]" : "text-gray-700"}`}>
+                            <p
+                              className={`font-semibold text-sm ${
+                                !update.isRead
+                                  ? "text-[#55423c]"
+                                  : "text-gray-700"
+                              }`}
+                            >
                               {update.title}
                             </p>
                             <p className="text-xs text-gray-600 mt-1">

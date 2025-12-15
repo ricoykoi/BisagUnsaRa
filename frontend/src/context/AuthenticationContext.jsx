@@ -1,13 +1,25 @@
-import { createContext, useState } from "react";
+import { createContext, useState, useEffect } from "react";
 
 export const AuthenticationContext = createContext();
 
 export const AuthenticationProvider = ({ children }) => {
-  // Keep user only in memory; persistence lives in MongoDB via API
-  const [user, setUser] = useState(null);
+  // Load user from localStorage initially
+  const [user, setUser] = useState(() => {
+    const savedUser = localStorage.getItem("currentUser");
+    return savedUser ? JSON.parse(savedUser) : null;
+  });
+
+  // Save user to localStorage whenever it changes
+  useEffect(() => {
+    if (user) {
+      localStorage.setItem("currentUser", JSON.stringify(user));
+    } else {
+      localStorage.removeItem("currentUser");
+    }
+  }, [user]);
 
   const logout = () => {
-    setUser(null);
+    setUser(null); // this also removes from localStorage
   };
 
   return (

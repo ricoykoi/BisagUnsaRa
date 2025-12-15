@@ -1,8 +1,6 @@
 import axios from "axios";
 
-// Use configured API base; fallback to localhost dev API to avoid undefined URLs.
-const API_BASE = import.meta.env.VITE_PWA || "http://localhost:3000/api";
-const API_URL = `${API_BASE}/auth`;
+const API_URL = `${import.meta.env.VITE_API}/auth`;
 
 // REGISTER
 export const registerUser = async (userData) => {

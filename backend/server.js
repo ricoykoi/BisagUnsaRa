@@ -14,38 +14,33 @@ import updateRouter from "./routes/updateRoutes.js";
 dotenv.config();
 
 const app = express();
+
+// Connect to MongoDB
 connectDB();
 
-// Ensure plans exist in database on server startup
+// Ensure plans exist in database on startup
 ensurePlans().then((success) => {
   if (success) {
     console.log("✓ Plans verified in database");
   } else {
-    console.warn("⚠ Warning: Could not verify plans. Run 'npm run seed:plans' manually.");
+    console.warn(
+      "⚠ Warning: Could not verify plans. Run 'npm run seed:plans' manually."
+    );
   }
 });
 
+// CORS setup
 const allowedOrigins = [
-  // Local development
   "http://localhost:3000",
   "http://localhost:5173",
-
-  // Production frontend (Vercel) - use full https URL
   "https://bisag-unsa-ra.vercel.app",
-
-  // Optional: Vercel preview deployments (replace with your actual preview domain if different)
   "https://bisag-unsa-ra-git-main-yourname.vercel.app",
 ];
 
 const corsOptions = {
   origin: (origin, callback) => {
-    // Allow requests with no origin (Postman, server-to-server)
-    if (!origin) return callback(null, true);
-
-    if (allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    }
-
+    if (!origin) return callback(null, true); // Allow Postman or server-to-server requests
+    if (allowedOrigins.includes(origin)) return callback(null, true);
     return callback(new Error("Not allowed by CORS"));
   },
   credentials: true,
@@ -53,13 +48,13 @@ const corsOptions = {
   allowedHeaders: ["Content-Type", "Authorization"],
 };
 
+// Apply CORS globally
 app.use(cors(corsOptions));
-// Explicitly handle all OPTIONS preflight requests
-app.options("*", cors(corsOptions));
+
+// Parse JSON bodies
 app.use(express.json());
 
-const PORT = process.env.PORT || 3000;
-
+// Routes
 app.use("/api/auth", userRouter);
 app.use("/api/pets", petRouter);
 app.use("/api/plans", plansRouter);
@@ -68,6 +63,8 @@ app.use("/api/subscriptions", subscriptionRouter);
 app.use("/api/export", exportRouter);
 app.use("/api/updates", updateRouter);
 
+// Start server
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log("Running port: ", PORT);
+  console.log(`Server running on port ${PORT}`);
 });
