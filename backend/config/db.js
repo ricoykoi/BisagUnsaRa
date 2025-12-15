@@ -1,8 +1,12 @@
 import mongoose from "mongoose";
 
+// Load environment variables from .env file
+import dotenv from 'dotenv';
+dotenv.config();
+
 const connectDB = async () => {
   try {
-    const conn = await mongoose.connect("mongodb://localhost:27017/furfur");
+    const conn = await mongoose.connect(process.env.MONGO_URI);
     console.log(`MongoDB Connected: ${conn.connection.host}`);
   } catch (error) {
     console.error(error.message);
