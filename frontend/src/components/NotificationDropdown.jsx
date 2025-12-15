@@ -8,16 +8,17 @@ import {
   dismissUpdate,
   checkAndCreateNotifications,
 } from "../services/updateService";
-import { useLocation } from "react-router-dom";
 
 const NotificationDropdown = () => {
   const { user } = useContext(AuthenticationContext);
-  const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const [updates, setUpdates] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
   const dropdownRef = useRef(null);
+  const touchStartY = useRef(0);
+  const drawerRef = useRef(null);
 
   // Fetch updates
   const fetchUpdates = async () => {
@@ -41,7 +42,6 @@ const NotificationDropdown = () => {
 
     try {
       await checkAndCreateNotifications(user._id);
-      // Refresh updates after checking
       await fetchUpdates();
     } catch (error) {
       console.error("Failed to check notifications:", error);
@@ -54,10 +54,9 @@ const NotificationDropdown = () => {
       fetchUpdates();
       checkNotifications();
 
-      // Check for notifications every minute
       const interval = setInterval(() => {
         checkNotifications();
-      }, 60000); // 1 minute
+      }, 60000);
 
       return () => clearInterval(interval);
     }
@@ -67,16 +66,72 @@ const NotificationDropdown = () => {
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setIsOpen(false);
+        closeDropdown();
       }
     };
 
     if (isOpen) {
       document.addEventListener("mousedown", handleClickOutside);
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "unset";
     }
 
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
+      document.body.style.overflow = "unset";
+    };
+  }, [isOpen]);
+
+  // Touch gestures for mobile drawer
+  useEffect(() => {
+    if (!isOpen || window.innerWidth >= 768) return;
+
+    const handleTouchStart = (e) => {
+      touchStartY.current = e.touches[0].clientY;
+    };
+
+    const handleTouchMove = (e) => {
+      if (!drawerRef.current) return;
+
+      const touchY = e.touches[0].clientY;
+      const deltaY = touchY - touchStartY.current;
+
+      // Only allow downward swipe to close
+      if (deltaY > 50) {
+        drawerRef.current.style.transform = `translateY(${Math.min(
+          deltaY,
+          100
+        )}px)`;
+      }
+    };
+
+    const handleTouchEnd = (e) => {
+      if (!drawerRef.current) return;
+
+      const touchY = e.changedTouches[0].clientY;
+      const deltaY = touchY - touchStartY.current;
+
+      if (deltaY > 100) {
+        closeDropdown();
+      } else {
+        drawerRef.current.style.transform = "translateY(0)";
+      }
+    };
+
+    const drawer = drawerRef.current;
+    if (drawer) {
+      drawer.addEventListener("touchstart", handleTouchStart);
+      drawer.addEventListener("touchmove", handleTouchMove);
+      drawer.addEventListener("touchend", handleTouchEnd);
+    }
+
+    return () => {
+      if (drawer) {
+        drawer.removeEventListener("touchstart", handleTouchStart);
+        drawer.removeEventListener("touchmove", handleTouchMove);
+        drawer.removeEventListener("touchend", handleTouchEnd);
+      }
     };
   }, [isOpen]);
 
@@ -136,17 +191,31 @@ const NotificationDropdown = () => {
     }
   };
 
+  // Close dropdown with animation
+  const closeDropdown = () => {
+    if (window.innerWidth < 768) {
+      setIsClosing(true);
+      setTimeout(() => {
+        setIsOpen(false);
+        setIsClosing(false);
+      }, 300);
+    } else {
+      setIsOpen(false);
+    }
+  };
+
+  // Open dropdown
+  const openDropdown = () => {
+    setIsOpen(true);
+    fetchUpdates();
+  };
+
   if (!user) return null;
 
   return (
     <div className="relative" ref={dropdownRef}>
       <button
-        onClick={() => {
-          setIsOpen(!isOpen);
-          if (!isOpen) {
-            fetchUpdates();
-          }
-        }}
+        onClick={openDropdown}
         className="relative p-2 rounded-full transition-colors text-white hover:bg-[#6a524a]"
         aria-label="Notifications"
       >
@@ -158,107 +227,135 @@ const NotificationDropdown = () => {
         )}
       </button>
 
-      {isOpen && (
-        <div className="absolute md:right-0 -right-52 mt-2 w-80 bg-white rounded-lg shadow-xl border border-gray-200 z-50 max-h-96 overflow-hidden flex flex-col">
-          {/* Header */}
-          <div className="p-4 border-b border-gray-200 flex items-center justify-between">
-            <h3 className="font-bold text-[#55423c]">Notifications</h3>
-            <div className="flex items-center gap-2">
-              {unreadCount > 0 && (
-                <button
-                  onClick={handleMarkAllAsRead}
-                  className="text-xs text-[#795225] hover:text-[#55423c] flex items-center gap-1"
-                  title="Mark all as read"
-                >
-                  <CheckCheck size={14} />
-                  Mark all read
-                </button>
-              )}
-              <button
-                onClick={() => setIsOpen(false)}
-                className="p-1 hover:bg-gray-100 rounded transition-colors"
-              >
-                <X size={16} className="text-[#795225]" />
-              </button>
-            </div>
-          </div>
+      {/* Mobile Backdrop */}
+      {isOpen && window.innerWidth < 768 && (
+        <div
+          className={`fixed inset-0 bg-black/50 z-40 transition-opacity duration-300 ${
+            isClosing ? "opacity-0" : "opacity-100"
+          }`}
+          onClick={closeDropdown}
+        />
+      )}
 
-          {/* Updates List */}
-          <div className="overflow-y-auto flex-1">
-            {loading ? (
-              <div className="p-4 text-center text-[#795225]">Loading...</div>
-            ) : updates.length === 0 ? (
-              <div className="p-8 text-center">
-                <Bell size={32} className="mx-auto mb-2 text-gray-400" />
-                <p className="text-sm text-gray-500">No notifications</p>
-              </div>
-            ) : (
-              <div className="divide-y divide-gray-100">
-                {updates.map((update) => (
-                  <div
-                    key={update._id}
-                    className={`p-4 hover:bg-gray-50 transition-colors ${
-                      !update.isRead ? "bg-blue-50" : ""
-                    }`}
+      {isOpen && (
+        <div
+          ref={drawerRef}
+          className={`
+            fixed md:absolute z-50
+            md:right-0 md:top-full md:mt-2
+            inset-x-0 bottom-0 md:inset-x-auto md:bottom-auto
+            transition-transform duration-300 ease-out md:w-100
+            ${isClosing ? "translate-y-full md:translate-y-0" : "translate-y-0"}
+          `}
+        >
+          {/* Mobile Drawer Handle */}
+          {window.innerWidth < 768 && (
+            <div className="flex items-center justify-center pt-3 pb-1">
+              <div className="w-30 h-1.5 bg-gray-300 rounded-full"></div>
+            </div>
+          )}
+
+          <div className="bg-white rounded-t-2xl md:rounded-lg shadow-2xl md:shadow-lg border-t md:border border-gray-200 max-h-[80vh] md:max-h-96 overflow-hidden flex flex-col">
+            {/* Header */}
+            <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+              <h3 className="font-bold text-[#55423c]">Notifications</h3>
+              <div className="flex items-center gap-2">
+                {unreadCount > 0 && (
+                  <button
+                    onClick={handleMarkAllAsRead}
+                    className="text-xs text-[#795225] hover:text-[#55423c] flex items-center gap-1"
+                    title="Mark all as read"
                   >
-                    <div className="flex items-start gap-3">
-                      <div className="flex-1">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex-1">
-                            <p
-                              className={`font-semibold text-sm ${
-                                !update.isRead
-                                  ? "text-[#55423c]"
-                                  : "text-gray-700"
-                              }`}
-                            >
-                              {update.title}
-                            </p>
-                            <p className="text-xs text-gray-600 mt-1">
-                              {update.message}
-                            </p>
-                            {update.petName && (
-                              <p className="text-xs text-[#795225] mt-1">
-                                🐾 {update.petName}
+                    <CheckCheck size={14} />
+                    Mark all read
+                  </button>
+                )}
+                <button
+                  onClick={closeDropdown}
+                  className="p-1 hover:bg-gray-100 rounded transition-colors"
+                >
+                  <X size={16} className="text-[#795225]" />
+                </button>
+              </div>
+            </div>
+
+            {/* Updates List */}
+            <div className="overflow-y-auto flex-1">
+              {loading ? (
+                <div className="p-4 text-center text-[#795225]">Loading...</div>
+              ) : updates.length === 0 ? (
+                <div className="p-8 text-center">
+                  <Bell size={32} className="mx-auto mb-2 text-gray-400" />
+                  <p className="text-sm text-gray-500">No notifications</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-gray-100">
+                  {updates.map((update) => (
+                    <div
+                      key={update._id}
+                      className={`p-4 hover:bg-gray-50 transition-colors ${
+                        !update.isRead ? "bg-blue-50" : ""
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="flex-1">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1">
+                              <p
+                                className={`font-semibold text-sm ${
+                                  !update.isRead
+                                    ? "text-[#55423c]"
+                                    : "text-gray-700"
+                                }`}
+                              >
+                                {update.title}
                               </p>
-                            )}
-                            <div className="flex items-center gap-2 mt-2">
-                              <Clock size={12} className="text-gray-400" />
-                              <span className="text-xs text-gray-400">
-                                {formatTime(update.scheduledTime)}
-                              </span>
+                              <p className="text-xs text-gray-600 mt-1">
+                                {update.message}
+                              </p>
+                              {update.petName && (
+                                <p className="text-xs text-[#795225] mt-1">
+                                  🐾 {update.petName}
+                                </p>
+                              )}
+                              <div className="flex items-center gap-2 mt-2">
+                                <Clock size={12} className="text-gray-400" />
+                                <span className="text-xs text-gray-400">
+                                  {formatTime(update.scheduledTime)}
+                                </span>
+                              </div>
                             </div>
+                            {!update.isRead && (
+                              <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0 mt-1"></div>
+                            )}
                           </div>
-                          {!update.isRead && (
-                            <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0 mt-1"></div>
-                          )}
                         </div>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-2 mt-3">
-                      {!update.isRead && (
+                      <div className="flex items-center gap-2 mt-3">
+                        {!update.isRead && (
+                          <button
+                            onClick={() => handleMarkAsRead(update._id)}
+                            className="text-xs text-[#795225] hover:text-[#55423c] flex items-center gap-1"
+                            title="Mark as read"
+                          >
+                            <Check size={12} />
+                            Mark read
+                          </button>
+                        )}
                         <button
-                          onClick={() => handleMarkAsRead(update._id)}
-                          className="text-xs text-[#795225] hover:text-[#55423c] flex items-center gap-1"
-                          title="Mark as read"
+                          onClick={() => handleDismiss(update._id)}
+                          className="text-xs text-red-500 hover:text-red-700 flex items-center gap-1 ml-auto"
+                          title="Dismiss"
                         >
-                          <Check size={12} />
-                          Mark read
+                          <Trash2 size={12} />
+                          Dismiss
                         </button>
-                      )}
-                      <button
-                        onClick={() => handleDismiss(update._id)}
-                        className="text-xs text-red-500 hover:text-red-700 flex items-center gap-1 ml-auto"
-                        title="Dismiss"
-                      >
-                        <Trash2 size={12} />
-                        Dismiss
-                      </button>
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
