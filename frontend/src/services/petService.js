@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_URL = "http://localhost:3000/api/pets";
+const API_URL = `${import.meta.env.VITE_API}/pets`;
 
 // CREATE a new pet
 export const createPet = async (petData, userId) => {

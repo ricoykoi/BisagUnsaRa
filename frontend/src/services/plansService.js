@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_URL = "http://localhost:3000/api/plans";
+const API_URL = `${import.meta.env.VITE_API}/plans`;
 
 // GET all available plans
 export const getAllPlans = async () => {

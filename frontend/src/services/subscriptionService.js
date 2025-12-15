@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_URL = "http://localhost:3000/api/subscriptions";
+const API_URL = `${import.meta.env.VITE_API}/subscriptions`;
 
 // CREATE or UPDATE a subscription for a user (using planName)
 export const createSubscription = async (userId, planName) => {

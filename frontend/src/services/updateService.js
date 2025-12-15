@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_URL = "http://localhost:3000/api/updates";
+const API_URL = `${import.meta.env.VITE_API}/updates`;
 
 // GET all updates for a user
 export const getUpdatesByUser = async (userId) => {
@@ -69,5 +69,3 @@ export const checkAndCreateNotifications = async (userId) => {
     throw error;
   }
 };
-
-

@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_URL = "http://localhost:3000/api/export";
+const API_URL = `${import.meta.env.VITE_API}/export`;
 
 // CREATE a new export request
 export const requestExport = async (exportData) => {
