@@ -2,6 +2,7 @@ import React, { useContext, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { AuthenticationContext } from "../../context/AuthenticationContext";
 import { registerUser } from "../../services/userService";
+import { Loader2 } from "lucide-react";
 import logo from "/src/assets/furfurlogo.png";
 
 // Color scheme constants
@@ -38,6 +39,7 @@ const Register = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPasswordRequirements, setShowPasswordRequirements] =
     useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const { setUser } = useContext(AuthenticationContext);
 
@@ -64,6 +66,8 @@ const Register = () => {
       return;
     }
 
+    setIsLoading(true);
+
     try {
       // send data to backend
       const response = await registerUser({
@@ -85,6 +89,8 @@ const Register = () => {
     } catch (err) {
       console.log("Register error:", err);
       alert(err.response?.data?.message || "Registration failed");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -120,12 +126,13 @@ const Register = () => {
               placeholder="Username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              className="w-full px-4 py-3 rounded-lg border-2 focus:outline-none focus:ring-2 focus:ring-opacity-50 transition-all"
+              className="w-full px-4 py-3 rounded-lg border-2 focus:outline-none focus:ring-2 focus:ring-opacity-50 transition-all disabled:opacity-70 disabled:cursor-not-allowed"
               style={{
                 backgroundColor: COLORS.white,
                 borderColor: COLORS.coffeeBrown,
                 color: COLORS.darkBrown,
               }}
+              disabled={isLoading}
             />
           </div>
 
@@ -135,12 +142,13 @@ const Register = () => {
               placeholder="Email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-3 rounded-lg border-2 focus:outline-none focus:ring-2 focus:ring-opacity-50 transition-all"
+              className="w-full px-4 py-3 rounded-lg border-2 focus:outline-none focus:ring-2 focus:ring-opacity-50 transition-all disabled:opacity-70 disabled:cursor-not-allowed"
               style={{
                 backgroundColor: COLORS.white,
                 borderColor: COLORS.coffeeBrown,
                 color: COLORS.darkBrown,
               }}
+              disabled={isLoading}
             />
           </div>
 
@@ -152,12 +160,13 @@ const Register = () => {
               onChange={(e) => setPassword(e.target.value)}
               onFocus={() => setShowPasswordRequirements(true)}
               onBlur={() => setShowPasswordRequirements(false)}
-              className="w-full px-4 py-3 rounded-lg border-2 focus:outline-none focus:ring-2 focus:ring-opacity-50 transition-all"
+              className="w-full px-4 py-3 rounded-lg border-2 focus:outline-none focus:ring-2 focus:ring-opacity-50 transition-all disabled:opacity-70 disabled:cursor-not-allowed"
               style={{
                 backgroundColor: COLORS.white,
                 borderColor: COLORS.coffeeBrown,
                 color: COLORS.darkBrown,
               }}
+              disabled={isLoading}
             />
           </div>
 
@@ -313,29 +322,38 @@ const Register = () => {
               placeholder="Confirm Password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full px-4 py-3 rounded-lg border-2 focus:outline-none focus:ring-2 focus:ring-opacity-50 transition-all"
+              className="w-full px-4 py-3 rounded-lg border-2 focus:outline-none focus:ring-2 focus:ring-opacity-50 transition-all disabled:opacity-70 disabled:cursor-not-allowed"
               style={{
                 backgroundColor: COLORS.white,
                 borderColor: COLORS.coffeeBrown,
                 color: COLORS.darkBrown,
               }}
+              disabled={isLoading}
             />
           </div>
 
           <button
             type="submit"
-            disabled={!isFormValid}
-            className={`w-full py-4 rounded-xl font-bold text-lg transition-all transform ${
-              isFormValid
+            disabled={!isFormValid || isLoading}
+            className={`w-full py-4 rounded-xl font-bold text-lg transition-all transform relative ${
+              isFormValid && !isLoading
                 ? "hover:scale-105 shadow-lg cursor-pointer"
                 : "opacity-60 cursor-not-allowed"
             }`}
             style={{
-              backgroundColor: isFormValid ? COLORS.coffeeBrown : "#cccccc",
+              backgroundColor:
+                isFormValid && !isLoading ? COLORS.coffeeBrown : "#cccccc",
               color: COLORS.white,
             }}
           >
-            Create Account
+            {isLoading ? (
+              <div className="flex items-center justify-center gap-2">
+                <Loader2 className="w-5 h-5 animate-spin" />
+                <span>Creating Account...</span>
+              </div>
+            ) : (
+              "Create Account"
+            )}
           </button>
         </form>
 
@@ -343,8 +361,9 @@ const Register = () => {
         <div className="text-center mt-6">
           <Link
             to="/login"
-            className="font-medium underline transition-all hover:opacity-80"
+            className="font-medium underline transition-all hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed"
             style={{ color: COLORS.darkBrown }}
+            onClick={(e) => isLoading && e.preventDefault()}
           >
             Already have an account? Login
           </Link>

@@ -1,6 +1,6 @@
 import React, { useContext, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { PawPrint, Lock, User, Eye, EyeOff } from "lucide-react";
+import { PawPrint, Lock, User, Eye, EyeOff, Loader2 } from "lucide-react";
 import { loginUser } from "../../services/userService";
 import { AuthenticationContext } from "../../context/AuthenticationContext";
 import logo from "/src/assets/furfurlogo.png";
@@ -9,6 +9,7 @@ const Login = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const { setUser } = useContext(AuthenticationContext);
   const navigate = useNavigate();
 
@@ -19,6 +20,8 @@ const Login = () => {
       alert("Please enter both username and password");
       return;
     }
+
+    setIsLoading(true);
 
     try {
       const response = await loginUser({
@@ -34,6 +37,8 @@ const Login = () => {
     } catch (err) {
       console.log("Login error:", err);
       alert("Login failed. Please check your credentials.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -86,6 +91,7 @@ const Login = () => {
                     backgroundColor: "#f8f6f4",
                     borderColor: "#e8d7ca",
                   }}
+                  disabled={isLoading}
                 />
               </div>
             </div>
@@ -109,11 +115,13 @@ const Login = () => {
                     backgroundColor: "#f8f6f4",
                     borderColor: "#e8d7ca",
                   }}
+                  disabled={isLoading}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[#795225] hover:text-[#55423c]"
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[#795225] hover:text-[#55423c] disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={isLoading}
                 >
                   {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
@@ -123,9 +131,17 @@ const Login = () => {
             {/* Login Button */}
             <button
               type="submit"
-              className="w-full py-4 rounded-xl font-bold text-lg transition-all shadow-lg bg-gradient-to-r from-[#c18742] to-[#a87338] hover:from-[#a87338] hover:to-[#8b5e2f] transform hover:scale-[1.02] text-white"
+              disabled={isLoading}
+              className="w-full py-4 rounded-xl font-bold text-lg transition-all shadow-lg bg-gradient-to-r from-[#c18742] to-[#a87338] hover:from-[#a87338] hover:to-[#8b5e2f] disabled:from-[#e8d7ca] disabled:to-[#e8d7ca] disabled:cursor-not-allowed disabled:hover:scale-100 transform hover:scale-[1.02] text-white disabled:text-[#795225] relative"
             >
-              Sign In
+              {isLoading ? (
+                <div className="flex items-center justify-center gap-2">
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span>Signing in...</span>
+                </div>
+              ) : (
+                "Sign In"
+              )}
             </button>
           </form>
 
@@ -133,7 +149,8 @@ const Login = () => {
           <div className="text-center mt-8">
             <Link
               to="/register"
-              className="inline-flex items-center gap-2 font-medium text-[#c18742] hover:text-[#55423c] transition-colors"
+              className="inline-flex items-center gap-2 font-medium text-[#c18742] hover:text-[#55423c] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={(e) => isLoading && e.preventDefault()}
             >
               <PawPrint size={18} />
               <span>Create New Account</span>

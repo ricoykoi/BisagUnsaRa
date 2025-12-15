@@ -256,11 +256,7 @@ const MyPets = () => {
       }
       try {
         if (editMode && selectedPet) {
-          const updatedPet = await updatePet(
-            selectedPet._id,
-            newPet,
-            user._id
-          );
+          const updatedPet = await updatePet(selectedPet._id, newPet, user._id);
           setPets(
             pets.map((p) => (p._id === selectedPet._id ? updatedPet.pet : p))
           );
@@ -490,7 +486,13 @@ const MyPets = () => {
       alert("Could not save vaccination record.");
     }
 
-    setNewVaccination({ name: "", dateGiven: "", nextDueDate: "", veterinarian: "", notes: "" });
+    setNewVaccination({
+      name: "",
+      dateGiven: "",
+      nextDueDate: "",
+      veterinarian: "",
+      notes: "",
+    });
     setEditHealthRecordMode(false);
     setSelectedHealthRecord(null);
   };
@@ -520,7 +522,9 @@ const MyPets = () => {
         );
         const updatedPetFromServer = response.pet;
         setPets(
-          pets.map((p) => (p._id === selectedPet._id ? updatedPetFromServer : p))
+          pets.map((p) =>
+            p._id === selectedPet._id ? updatedPetFromServer : p
+          )
         );
         setSelectedPet(updatedPetFromServer);
       } catch (error) {
@@ -553,9 +557,7 @@ const MyPets = () => {
       );
       const updatedPetFromServer = response.pet;
       setPets(
-        pets.map((p) =>
-          p._id === selectedPet._id ? updatedPetFromServer : p
-        )
+        pets.map((p) => (p._id === selectedPet._id ? updatedPetFromServer : p))
       );
       setSelectedPet(updatedPetFromServer);
     } catch (error) {
@@ -563,7 +565,15 @@ const MyPets = () => {
       alert("Could not save vet visit record.");
     }
 
-    setNewVetVisit({ visitDate: "", reason: "", veterinarian: "", nextVisitDate: "", diagnosis: "", treatment: "", notes: "" });
+    setNewVetVisit({
+      visitDate: "",
+      reason: "",
+      veterinarian: "",
+      nextVisitDate: "",
+      diagnosis: "",
+      treatment: "",
+      notes: "",
+    });
     setEditHealthRecordMode(false);
     setSelectedHealthRecord(null);
   };
@@ -837,10 +847,7 @@ const MyPets = () => {
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  handleDeleteSchedule(
-                                    pet,
-                                    schedule._id
-                                  );
+                                  handleDeleteSchedule(pet, schedule._id);
                                 }}
                                 className="p-1 hover:bg-red-50 rounded transition-colors"
                               >
@@ -1211,7 +1218,10 @@ const MyPets = () => {
                             "Are you sure you want to delete this schedule?"
                           )
                         ) {
-                          handleDeleteSchedule(selectedPet, selectedSchedule._id);
+                          handleDeleteSchedule(
+                            selectedPet,
+                            selectedSchedule._id
+                          );
                         }
                       }}
                       className="flex-1 bg-red-500 text-white py-3 rounded-lg font-medium hover:bg-red-600 transition-colors"
@@ -1528,7 +1538,8 @@ const MyPets = () => {
                 <div className="flex justify-between p-3 bg-[#f8f6f4] rounded-lg">
                   <span className="font-medium text-[#795225]">Age</span>
                   <span className="font-bold text-[#55423c]">
-                    {selectedPet.age} {selectedPet.age === "1" ? "year" : "years"}
+                    {selectedPet.age}{" "}
+                    {selectedPet.age === "1" ? "year" : "years"}
                   </span>
                 </div>
                 {selectedPet.fatherBreed && (
