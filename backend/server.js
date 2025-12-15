@@ -34,7 +34,7 @@ const allowedOrigins = [
   "http://localhost:3000",
   "http://localhost:5173",
   "https://bisag-unsa-ra.vercel.app",
-  "https://bisag-unsa-ra-git-main-yourname.vercel.app",
+  "bisag-unsa-ra-53zc.vercel.app",
 ];
 
 const corsOptions = {
