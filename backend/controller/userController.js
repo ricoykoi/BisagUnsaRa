@@ -1,6 +1,7 @@
 import User from "../model/userModel.js";
 import Subscription from "../model/subscriptionModel.js";
 import Plan from "../model/plansModel.js";
+import bcrypt from "bcryptjs";
 
 // REGISTER
 export const register = async (req, res) => {
@@ -18,11 +19,15 @@ export const register = async (req, res) => {
       return res.status(400).json({ message: "Email already used" });
     }
 
+    // Hash the password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
     // create user
     const newUser = new User({
       username,
       email,
-      password,
+      password: hashedPassword,
     });
 
     await newUser.save();
@@ -69,8 +74,9 @@ export const login = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // check password (simple comparison)
-    if (user.password !== password) {
+    // check password
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
       return res.status(400).json({ message: "Wrong password" });
     }
 
@@ -216,7 +222,8 @@ export const changePassword = async (req, res) => {
     }
 
     // Verify current password
-    if (user.password !== currentPassword) {
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) {
       return res.status(400).json({ message: "Current password is incorrect" });
     }
 
@@ -238,7 +245,10 @@ export const changePassword = async (req, res) => {
       });
     }
 
-    user.password = newPassword;
+    // Hash the new password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+    user.password = hashedPassword;
     await user.save();
 
     res.status(200).json({
@@ -247,6 +257,35 @@ export const changePassword = async (req, res) => {
   } catch (error) {
     console.error("Change password error:", error);
     res.status(500).json({ message: "Server error during password change" });
+  }
+};
+
+// UPDATE USER SETTINGS
+export const updateUserSettings = async (req, res) => {
+  try {
+    const { userId, settings } = req.body;
+
+    if (!userId || !settings) {
+      return res.status(400).json({ message: "User ID and settings object are required" });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Merge new settings with existing ones
+    user.settings = { ...user.settings, ...settings };
+    await user.save();
+
+    res.status(200).json({
+      message: "Settings updated successfully",
+      user,
+    });
+
+  } catch (error) {
+    console.error("Update user settings error:", error);
+    res.status(500).json({ message: "Server error during settings update" });
   }
 };
 

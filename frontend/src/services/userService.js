@@ -1,6 +1,8 @@
 import axios from "axios";
 
-const API_URL = `${import.meta.env.VITE_PWA}/auth`;
+// Use configured API base; fallback to localhost dev API to avoid undefined URLs.
+const API_BASE = import.meta.env.VITE_PWA || "http://localhost:3000/api";
+const API_URL = `${API_BASE}/auth`;
 
 // REGISTER
 export const registerUser = async (userData) => {
@@ -81,6 +83,20 @@ export const changePassword = async (userId, currentPassword, newPassword) => {
   }
 };
 
+// UPDATE USER SETTINGS
+export const updateUserSettings = async (userId, settings) => {
+  try {
+    const response = await axios.patch(`${API_URL}/settings`, {
+      userId,
+      settings,
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Update user settings service error:", error);
+    throw error;
+  }
+};
+
 // DELETE ACCOUNT
 export const deleteAccount = async (userId) => {
   try {
@@ -101,5 +117,6 @@ export default {
   updateUsername,
   updateEmail,
   changePassword,
+  updateUserSettings,
   deleteAccount,
 };

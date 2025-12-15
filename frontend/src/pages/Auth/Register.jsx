@@ -80,7 +80,7 @@ const Register = () => {
       alert("Account created successfully!");
 
       // Redirect to the login page
-      navigate("/login");
+      navigate("/dashboard");
     } catch (err) {
       console.log("Register error:", err);
       alert(err.response?.data?.message || "Registration failed");

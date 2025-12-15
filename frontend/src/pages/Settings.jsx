@@ -37,7 +37,8 @@ import {
   updateProfilePicture,
   updateUsername,
   updateEmail, 
-  changePassword, 
+  changePassword,
+  updateUserSettings, 
   deleteAccount 
 } from "../services/userService";
 import { Upload, X } from "lucide-react";
@@ -59,17 +60,6 @@ const Settings = () => {
   const { user, setUser, logout } = useContext(AuthenticationContext);
   const { currentPlan } = useSubscription();
   const navigate = useNavigate();
-
-  // Settings states
-  const [darkMode, setDarkMode] = useState(false);
-  const [notifications, setNotifications] = useState({
-    reminders: true,
-    feeding: true,
-    health: true,
-    promotions: false,
-  });
-  const [language, setLanguage] = useState("english");
-  const [soundEnabled, setSoundEnabled] = useState(true);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
@@ -84,6 +74,14 @@ const Settings = () => {
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [showPasswordRequirements, setShowPasswordRequirements] = useState(false);
   const fileInputRef = useRef(null);
+
+  // Settings states - initialized from user context
+  const [settings, setSettings] = useState(user?.settings || {});
+
+  // Update local settings state if user object changes
+  React.useEffect(() => {
+    setSettings(user?.settings || {});
+  }, [user]);
 
   // User data from context
   const userData = user ? {
@@ -254,11 +252,31 @@ const Settings = () => {
     }
   };
 
-  const toggleNotification = (type) => {
-    setNotifications((prev) => ({
-      ...prev,
-      [type]: !prev[type],
-    }));
+  // Generic handler to update a setting and persist it
+  const handleSettingChange = async (key, value) => {
+    const newSettings = { ...settings };
+
+    // Handle nested notification settings
+    if (key.startsWith("notifications.")) {
+      const notificationKey = key.split(".")[1];
+      newSettings.notifications = {
+        ...newSettings.notifications,
+        [notificationKey]: value,
+      };
+    } else {
+      newSettings[key] = value;
+    }
+
+    setSettings(newSettings); // Optimistic UI update
+
+    try {
+      const response = await updateUserSettings(user._id, newSettings);
+      setUser(response.user); // Update context with the latest user object from backend
+    } catch (error) {
+      console.error(`Failed to update setting ${key}:`, error);
+      alert(error.response?.data?.message || `Failed to save setting: ${key}.`);
+      setSettings(user.settings); // Revert on failure
+    }
   };
 
   const exportData = () => {
@@ -266,10 +284,7 @@ const Settings = () => {
       user: userData,
       pets: [], // Assuming pets are not in settings context
       settings: {
-        darkMode,
-        notifications,
-        language,
-        soundEnabled,
+        ...settings
       },
     };
     const blob = new Blob([JSON.stringify(data, null, 2)], {
@@ -321,9 +336,9 @@ const Settings = () => {
           icon: <Clock size={18} />,
           label: "Reminder Notifications",
           type: "toggle",
-          toggleValue: notifications.reminders,
-          onToggle: () => toggleNotification("reminders"),
+          toggleValue: settings.notifications?.reminders ?? true,
           color: COLORS.coffeeBrown,
+          onToggle: () => handleSettingChange("notifications.reminders", !settings.notifications?.reminders),
         },
       ],
     },
