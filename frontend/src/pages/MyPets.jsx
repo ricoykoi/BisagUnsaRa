@@ -21,6 +21,7 @@ import {
   ChevronRight,
   Upload,
   Info,
+  Loader2,
 } from "lucide-react";
 import { useSubscription } from "../context/useSubscriptionHook";
 import {
@@ -101,6 +102,11 @@ const MyPets = () => {
     motherBreed: "",
   });
 
+  const [loading, setLoading] = useState(false);
+  const [loadingPets, setLoadingPets] = useState(true);
+  const [addingSchedule, setAddingSchedule] = useState(false);
+  const [addingHealthRecord, setAddingHealthRecord] = useState(false);
+
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -169,10 +175,13 @@ const MyPets = () => {
     const fetchPets = async () => {
       if (user?._id) {
         try {
+          setLoadingPets(true);
           const userPets = await getPets(user._id);
           setPets(userPets);
         } catch (error) {
           console.error("Failed to fetch pets:", error);
+        } finally {
+          setLoadingPets(false);
         }
       }
     };
@@ -254,6 +263,7 @@ const MyPets = () => {
         );
         return;
       }
+      setLoading(true);
       try {
         if (editMode && selectedPet) {
           const updatedPet = await updatePet(selectedPet._id, newPet, user._id);
@@ -279,6 +289,8 @@ const MyPets = () => {
       } catch (error) {
         console.error("Failed to save pet:", error);
         alert("Could not save pet. Please try again.");
+      } finally {
+        setLoading(false);
       }
     } else {
       alert("Please fill in all required fields: Pet Name, Pet Type, and Age.");
@@ -302,6 +314,7 @@ const MyPets = () => {
 
   const handleDeletePet = async (petId) => {
     if (confirm("Are you sure you want to delete this pet?")) {
+      setLoading(true);
       try {
         await deletePet(petId, user._id);
         setPets(pets.filter((pet) => pet._id !== petId));
@@ -311,6 +324,8 @@ const MyPets = () => {
       } catch (error) {
         console.error("Failed to delete pet:", error);
         alert("Could not delete pet.");
+      } finally {
+        setLoading(false);
       }
     }
   };
@@ -361,6 +376,7 @@ const MyPets = () => {
         updatedSchedules = [...(selectedPet.schedules || []), scheduleData];
       }
 
+      setAddingSchedule(true);
       try {
         const response = await updatePet(
           selectedPet._id,
@@ -378,6 +394,8 @@ const MyPets = () => {
       } catch (error) {
         console.error("Failed to save schedule:", error);
         alert("Could not save schedule.");
+      } finally {
+        setAddingSchedule(false);
       }
       setNewSchedule({
         type: "Feeding",
@@ -414,6 +432,7 @@ const MyPets = () => {
 
   const handleDeleteSchedule = async (pet, scheduleId) => {
     if (confirm("Are you sure you want to delete this schedule?")) {
+      setAddingSchedule(true);
       const updatedSchedules = pet.schedules.filter(
         (s) => s._id !== scheduleId
       );
@@ -431,6 +450,8 @@ const MyPets = () => {
       } catch (error) {
         console.error("Failed to delete schedule:", error);
         alert("Could not delete schedule.");
+      } finally {
+        setAddingSchedule(false);
       }
     }
   };
@@ -470,6 +491,7 @@ const MyPets = () => {
       ];
     }
 
+    setAddingHealthRecord(true);
     try {
       const response = await updatePet(
         selectedPet._id,
@@ -484,6 +506,8 @@ const MyPets = () => {
     } catch (error) {
       console.error("Failed to save vaccination:", error);
       alert("Could not save vaccination record.");
+    } finally {
+      setAddingHealthRecord(false);
     }
 
     setNewVaccination({
@@ -511,6 +535,7 @@ const MyPets = () => {
 
   const handleDeleteVaccination = async (vaccinationId) => {
     if (confirm("Are you sure you want to delete this vaccination record?")) {
+      setAddingHealthRecord(true);
       const updatedVaccinations = selectedPet.vaccinations.filter(
         (v) => v._id !== vaccinationId
       );
@@ -530,6 +555,8 @@ const MyPets = () => {
       } catch (error) {
         console.error("Failed to delete vaccination:", error);
         alert("Could not delete vaccination record.");
+      } finally {
+        setAddingHealthRecord(false);
       }
     }
   };
@@ -549,6 +576,7 @@ const MyPets = () => {
       updatedVetVisits = [...(selectedPet.vetVisits || []), newVetVisit];
     }
 
+    setAddingHealthRecord(true);
     try {
       const response = await updatePet(
         selectedPet._id,
@@ -563,6 +591,8 @@ const MyPets = () => {
     } catch (error) {
       console.error("Failed to save vet visit:", error);
       alert("Could not save vet visit record.");
+    } finally {
+      setAddingHealthRecord(false);
     }
 
     setNewVetVisit({
@@ -594,6 +624,7 @@ const MyPets = () => {
 
   const handleDeleteVetVisit = async (vetVisitId) => {
     if (confirm("Are you sure you want to delete this vet visit record?")) {
+      setAddingHealthRecord(true);
       const updatedVetVisits = selectedPet.vetVisits.filter(
         (v) => v._id !== vetVisitId
       );
@@ -613,9 +644,12 @@ const MyPets = () => {
       } catch (error) {
         console.error("Failed to delete vet visit:", error);
         alert("Could not delete vet visit record.");
+      } finally {
+        setAddingHealthRecord(false);
       }
     }
   };
+
   return (
     <div className="min-h-screen bg-[#f8f6f4]">
       {/* Header Section */}
@@ -676,249 +710,284 @@ const MyPets = () => {
           )}
         </div>
 
-        {/* Pet List */}
-        {pets.length > 0 ? (
-          <div className="space-y-4">
-            {pets.map((pet) => {
-              const stats = getScheduleStats(pet);
-              return (
-                <div
-                  key={pet._id}
-                  onClick={() => openProfileModal(pet)}
-                  className="bg-white rounded-xl shadow-sm border border-[#e8d7ca] overflow-hidden"
-                >
-                  {/* Pet Header */}
-                  <div className="p-4 border-b border-[#e8d7ca]">
-                    <div className="flex items-center">
-                      <div className="mr-4">
-                        {pet.photo ? (
-                          <img
-                            onClick={() => openProfileModal(pet)}
-                            src={pet.photo}
-                            alt={pet.name}
-                            className="w-16 h-16 rounded-full object-cover border-2 border-[#ffd68e]"
-                          />
-                        ) : (
-                          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#ffd68e] to-[#c18742] flex items-center justify-center border-2 border-white shadow-sm">
-                            <span className="text-2xl font-bold text-white">
-                              {pet.name.charAt(0)}
-                            </span>
+        {/* Loading State for Pets */}
+        {loadingPets ? (
+          <div className="bg-white rounded-xl p-8 text-center shadow-sm border border-[#e8d7ca]">
+            <div className="flex flex-col items-center justify-center">
+              <Loader2 className="w-8 h-8 animate-spin text-[#c18742] mb-4" />
+              <h3 className="text-xl font-bold text-[#55423c] mb-2">
+                Loading Pets...
+              </h3>
+              <p className="text-[#795225]">
+                Please wait while we fetch your pets.
+              </p>
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Pet List */}
+            {pets.length > 0 ? (
+              <div className="space-y-4">
+                {pets.map((pet) => {
+                  const stats = getScheduleStats(pet);
+                  return (
+                    <div
+                      key={pet._id}
+                      onClick={() => openProfileModal(pet)}
+                      className="bg-white rounded-xl shadow-sm border border-[#e8d7ca] overflow-hidden"
+                    >
+                      {/* Pet Header */}
+                      <div className="p-4 border-b border-[#e8d7ca]">
+                        <div className="flex items-center">
+                          <div className="mr-4">
+                            {pet.photo ? (
+                              <img
+                                onClick={() => openProfileModal(pet)}
+                                src={pet.photo}
+                                alt={pet.name}
+                                className="w-16 h-16 rounded-full object-cover border-2 border-[#ffd68e]"
+                              />
+                            ) : (
+                              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#ffd68e] to-[#c18742] flex items-center justify-center border-2 border-white shadow-sm">
+                                <span className="text-2xl font-bold text-white">
+                                  {pet.name.charAt(0)}
+                                </span>
+                              </div>
+                            )}
                           </div>
-                        )}
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="text-xl font-bold text-[#55423c] mb-1">
-                          {pet.name}
-                        </h3>
-                        <div className="flex flex-wrap gap-2">
-                          <span className="bg-[#f8f6f4] text-[#795225] text-xs px-2 py-1 rounded-full font-medium">
-                            {pet.type}
-                          </span>
-                          <span className="bg-[#f8f6f4] text-[#795225] text-xs px-2 py-1 rounded-full font-medium">
-                            Age: {pet.age} {pet.age === "1" ? "year" : "years"}
-                          </span>
-                          {pet.breed && (
-                            <span className="bg-[#f8f6f4] text-[#795225] text-xs px-2 py-1 rounded-full font-medium">
-                              {pet.breed}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Schedule Stats */}
-                  {stats.total > 0 && (
-                    <div className="p-4 border-b border-[#e8d7ca] bg-[#f8f6f4]">
-                      <div className="grid grid-cols-4 gap-2">
-                        <div className="text-center">
-                          <div className="text-lg font-bold text-[#55423c]">
-                            {stats.total}
+                          <div className="flex-1">
+                            <h3 className="text-xl font-bold text-[#55423c] mb-1">
+                              {pet.name}
+                            </h3>
+                            <div className="flex flex-wrap gap-2">
+                              <span className="bg-[#f8f6f4] text-[#795225] text-xs px-2 py-1 rounded-full font-medium">
+                                {pet.type}
+                              </span>
+                              <span className="bg-[#f8f6f4] text-[#795225] text-xs px-2 py-1 rounded-full font-medium">
+                                Age: {pet.age}{" "}
+                                {pet.age === "1" ? "year" : "years"}
+                              </span>
+                              {pet.breed && (
+                                <span className="bg-[#f8f6f4] text-[#795225] text-xs px-2 py-1 rounded-full font-medium">
+                                  {pet.breed}
+                                </span>
+                              )}
+                            </div>
                           </div>
-                          <div className="text-xs text-[#795225]">Total</div>
-                        </div>
-                        <div className="text-center">
-                          <div className="text-lg font-bold text-[#c18742]">
-                            {stats.dailyCount}
-                          </div>
-                          <div className="text-xs text-[#795225]">Daily</div>
-                        </div>
-                        <div className="text-center">
-                          <div className="text-lg font-bold text-[#795225]">
-                            {stats.weeklyCount}
-                          </div>
-                          <div className="text-xs text-[#795225]">Weekly</div>
-                        </div>
-                        <div className="text-center">
-                          <div className="text-lg font-bold text-[#55423c]">
-                            {stats.monthlyCount}
-                          </div>
-                          <div className="text-xs text-[#795225]">Monthly</div>
                         </div>
                       </div>
-                    </div>
-                  )}
 
-                  {/* Pet Actions */}
-                  <div className="grid grid-cols-3 gap-1 p-3 border-b border-[#e8d7ca] bg-[#f8f6f4]">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleEditPet(pet);
-                      }}
-                      className="flex items-center justify-center gap-1 bg-white text-[#795225] py-2 rounded-lg font-medium hover:bg-[#f8f6f4] transition-colors border border-[#e8d7ca]"
-                    >
-                      <Edit size={16} />
-                      <span className="text-sm">Edit</span>
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openScheduleModal(pet);
-                      }}
-                      className="flex items-center justify-center gap-1 bg-white text-[#795225] py-2 rounded-lg font-medium hover:bg-[#f8f6f4] transition-colors border border-[#e8d7ca]"
-                    >
-                      <Clock size={16} />
-                      <span className="text-sm">Schedules</span>
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openHealthRecordsModal(pet);
-                      }}
-                      className={`flex items-center justify-center gap-1 py-2 rounded-lg font-medium transition-colors ${
-                        features.hasHealthRecords
-                          ? "bg-[#ffd68e] text-[#55423c] hover:bg-[#e6c27d]"
-                          : "bg-gray-100 text-gray-400 cursor-not-allowed"
-                      }`}
-                      disabled={!features.hasHealthRecords}
-                    >
-                      <Stethoscope size={16} />
-                      <span className="text-sm">Health</span>
-                    </button>
-                  </div>
+                      {/* Schedule Stats */}
+                      {stats.total > 0 && (
+                        <div className="p-4 border-b border-[#e8d7ca] bg-[#f8f6f4]">
+                          <div className="grid grid-cols-4 gap-2">
+                            <div className="text-center">
+                              <div className="text-lg font-bold text-[#55423c]">
+                                {stats.total}
+                              </div>
+                              <div className="text-xs text-[#795225]">
+                                Total
+                              </div>
+                            </div>
+                            <div className="text-center">
+                              <div className="text-lg font-bold text-[#c18742]">
+                                {stats.dailyCount}
+                              </div>
+                              <div className="text-xs text-[#795225]">
+                                Daily
+                              </div>
+                            </div>
+                            <div className="text-center">
+                              <div className="text-lg font-bold text-[#795225]">
+                                {stats.weeklyCount}
+                              </div>
+                              <div className="text-xs text-[#795225]">
+                                Weekly
+                              </div>
+                            </div>
+                            <div className="text-center">
+                              <div className="text-lg font-bold text-[#55423c]">
+                                {stats.monthlyCount}
+                              </div>
+                              <div className="text-xs text-[#795225]">
+                                Monthly
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
 
-                  {/* Quick Schedules Preview */}
-                  {pet.schedules.length > 0 && (
-                    <div className="p-4">
-                      <div className="flex justify-between items-center mb-3">
-                        <h4 className="text-md font-bold text-[#55423c] flex items-center gap-2">
-                          <Clock size={18} />
-                          Upcoming Schedules
-                        </h4>
+                      {/* Pet Actions */}
+                      <div className="grid grid-cols-3 gap-1 p-3 border-b border-[#e8d7ca] bg-[#f8f6f4]">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEditPet(pet);
+                          }}
+                          className="flex items-center justify-center gap-1 bg-white text-[#795225] py-2 rounded-lg font-medium hover:bg-[#f8f6f4] transition-colors border border-[#e8d7ca]"
+                        >
+                          <Edit size={16} />
+                          <span className="text-sm">Edit</span>
+                        </button>
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             openScheduleModal(pet);
                           }}
-                          className="text-sm text-[#c18742] font-medium hover:text-[#55423c] transition-colors"
+                          className="flex items-center justify-center gap-1 bg-white text-[#795225] py-2 rounded-lg font-medium hover:bg-[#f8f6f4] transition-colors border border-[#e8d7ca]"
                         >
-                          View All
+                          <Clock size={16} />
+                          <span className="text-sm">Schedules</span>
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openHealthRecordsModal(pet);
+                          }}
+                          className={`flex items-center justify-center gap-1 py-2 rounded-lg font-medium transition-colors ${
+                            features.hasHealthRecords
+                              ? "bg-[#ffd68e] text-[#55423c] hover:bg-[#e6c27d]"
+                              : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                          }`}
+                          disabled={!features.hasHealthRecords}
+                        >
+                          <Stethoscope size={16} />
+                          <span className="text-sm">Health</span>
                         </button>
                       </div>
-                      <div className="space-y-2">
-                        {pet.schedules.slice(0, 3).map((schedule) => (
-                          <div
-                            key={schedule._id}
-                            className="flex items-center justify-between p-3 rounded-lg border border-[#e8d7ca] hover:bg-[#f8f6f4] transition-colors"
-                          >
-                            <div className="flex items-center gap-3">
-                              <div className="w-2 h-8 bg-[#c18742] rounded-full"></div>
-                              <div>
-                                <div className="font-semibold text-[#55423c]">
-                                  {schedule.type}
+
+                      {/* Quick Schedules Preview */}
+                      {pet.schedules.length > 0 && (
+                        <div className="p-4">
+                          <div className="flex justify-between items-center mb-3">
+                            <h4 className="text-md font-bold text-[#55423c] flex items-center gap-2">
+                              <Clock size={18} />
+                              Upcoming Schedules
+                            </h4>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openScheduleModal(pet);
+                              }}
+                              className="text-sm text-[#c18742] font-medium hover:text-[#55423c] transition-colors"
+                            >
+                              View All
+                            </button>
+                          </div>
+                          <div className="space-y-2">
+                            {pet.schedules.slice(0, 3).map((schedule) => (
+                              <div
+                                key={schedule._id}
+                                className="flex items-center justify-between p-3 rounded-lg border border-[#e8d7ca] hover:bg-[#f8f6f4] transition-colors"
+                              >
+                                <div className="flex items-center gap-3">
+                                  <div className="w-2 h-8 bg-[#c18742] rounded-full"></div>
+                                  <div>
+                                    <div className="font-semibold text-[#55423c]">
+                                      {schedule.type}
+                                    </div>
+                                    <div className="text-sm text-[#795225]">
+                                      <Clock
+                                        size={12}
+                                        className="inline mr-1"
+                                      />
+                                      {schedule.time} • {schedule.frequency}
+                                    </div>
+                                  </div>
                                 </div>
-                                <div className="text-sm text-[#795225]">
-                                  <Clock size={12} className="inline mr-1" />
-                                  {schedule.time} • {schedule.frequency}
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleEditSchedule(pet, schedule);
+                                    }}
+                                    className="p-1 hover:bg-[#e8d7ca] rounded transition-colors"
+                                  >
+                                    <Edit
+                                      size={16}
+                                      className="text-[#795225]"
+                                    />
+                                  </button>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDeleteSchedule(pet, schedule._id);
+                                    }}
+                                    className="p-1 hover:bg-red-50 rounded transition-colors"
+                                  >
+                                    <Trash2
+                                      size={16}
+                                      className="text-red-500"
+                                    />
+                                  </button>
                                 </div>
                               </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleEditSchedule(pet, schedule);
-                                }}
-                                className="p-1 hover:bg-[#e8d7ca] rounded transition-colors"
-                              >
-                                <Edit size={16} className="text-[#795225]" />
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDeleteSchedule(pet, schedule._id);
-                                }}
-                                className="p-1 hover:bg-red-50 rounded transition-colors"
-                              >
-                                <Trash2 size={16} className="text-red-500" />
-                              </button>
-                            </div>
+                            ))}
                           </div>
-                        ))}
-                      </div>
+                        </div>
+                      )}
                     </div>
-                  )}
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="bg-white rounded-xl p-8 text-center shadow-sm border border-[#e8d7ca]">
+                <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-[#ffd68e] to-[#c18742] flex items-center justify-center">
+                  <PawPrint size={32} className="text-white" />
                 </div>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="bg-white rounded-xl p-8 text-center shadow-sm border border-[#e8d7ca]">
-            <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-[#ffd68e] to-[#c18742] flex items-center justify-center">
-              <PawPrint size={32} className="text-white" />
-            </div>
-            <h3 className="text-xl font-bold text-[#55423c] mb-2">
-              No Pets Added Yet
-            </h3>
-            <p className="text-[#795225] mb-6">
-              Add your first pet to start tracking their care
-            </p>
-            <button
-              onClick={() => {
-                setEditMode(false);
-                setNewPet({
-                  name: "",
-                  type: "",
-                  breed: "",
-                  age: "",
-                  photo: null,
-                  fatherBreed: "",
-                  motherBreed: "",
-                });
-                setModalVisible(true);
-              }}
-              className="bg-gradient-to-r from-[#c18742] to-[#a87338] text-white px-6 py-3 rounded-xl font-bold text-lg hover:from-[#a87338] hover:to-[#8b5e2f] transition-all shadow-sm"
-            >
-              <Plus size={20} className="inline mr-2" />
-              Add Your First Pet
-            </button>
-          </div>
-        )}
+                <h3 className="text-xl font-bold text-[#55423c] mb-2">
+                  No Pets Added Yet
+                </h3>
+                <p className="text-[#795225] mb-6">
+                  Add your first pet to start tracking their care
+                </p>
+                <button
+                  onClick={() => {
+                    setEditMode(false);
+                    setNewPet({
+                      name: "",
+                      type: "",
+                      breed: "",
+                      age: "",
+                      photo: null,
+                      fatherBreed: "",
+                      motherBreed: "",
+                    });
+                    setModalVisible(true);
+                  }}
+                  className="bg-gradient-to-r from-[#c18742] to-[#a87338] text-white px-6 py-3 rounded-xl font-bold text-lg hover:from-[#a87338] hover:to-[#8b5e2f] transition-all shadow-sm"
+                >
+                  <Plus size={20} className="inline mr-2" />
+                  Add Your First Pet
+                </button>
+              </div>
+            )}
 
-        {/* Add Pet Button */}
-        {pets.length > 0 && petsRemaining > 0 && (
-          <div className="sticky bottom-20 pb-4">
-            <button
-              onClick={() => {
-                setEditMode(false);
-                setNewPet({
-                  name: "",
-                  type: "",
-                  breed: "",
-                  age: "",
-                  photo: null,
-                  fatherBreed: "",
-                  motherBreed: "",
-                });
-                setModalVisible(true);
-              }}
-              className="w-full bg-gradient-to-r from-[#c18742] to-[#a87338] text-white py-4 rounded-xl font-bold text-lg hover:from-[#a87338] hover:to-[#8b5e2f] transition-all shadow-lg flex items-center justify-center gap-2"
-            >
-              <Plus size={20} />
-              Add Another Pet
-            </button>
-          </div>
+            {/* Add Pet Button */}
+            {pets.length > 0 && petsRemaining > 0 && (
+              <div className="sticky bottom-20 pb-4">
+                <button
+                  onClick={() => {
+                    setEditMode(false);
+                    setNewPet({
+                      name: "",
+                      type: "",
+                      breed: "",
+                      age: "",
+                      photo: null,
+                      fatherBreed: "",
+                      motherBreed: "",
+                    });
+                    setModalVisible(true);
+                  }}
+                  className="w-full bg-gradient-to-r from-[#c18742] to-[#a87338] text-white py-4 rounded-xl font-bold text-lg hover:from-[#a87338] hover:to-[#8b5e2f] transition-all shadow-lg flex items-center justify-center gap-2"
+                >
+                  <Plus size={20} />
+                  Add Another Pet
+                </button>
+              </div>
+            )}
+          </>
         )}
       </main>
 
@@ -937,6 +1006,7 @@ const MyPets = () => {
                     setEditMode(false);
                   }}
                   className="p-1 hover:bg-[#f8f6f4] rounded transition-colors"
+                  disabled={loading}
                 >
                   <X size={24} className="text-[#795225]" />
                 </button>
@@ -947,7 +1017,7 @@ const MyPets = () => {
                 <div className="text-center">
                   <div
                     className="relative w-24 h-24 mx-auto mb-4 rounded-full border-2 border-dashed border-[#e8d7ca] hover:border-[#c18742] transition-colors cursor-pointer overflow-hidden bg-[#f8f6f4]"
-                    onClick={() => fileInputRef.current.click()}
+                    onClick={() => !loading && fileInputRef.current.click()}
                   >
                     {newPet.photo ? (
                       <img
@@ -969,6 +1039,7 @@ const MyPets = () => {
                       accept="image/*"
                       onChange={handleImageChange}
                       className="hidden"
+                      disabled={loading}
                     />
                   </div>
                 </div>
@@ -980,7 +1051,8 @@ const MyPets = () => {
                   onChange={(e) =>
                     setNewPet({ ...newPet, name: e.target.value })
                   }
-                  className="w-full border border-[#e8d7ca] rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#c18742] focus:border-transparent"
+                  className="w-full border border-[#e8d7ca] rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#c18742] focus:border-transparent disabled:opacity-70 disabled:cursor-not-allowed"
+                  disabled={loading}
                 />
 
                 <input
@@ -990,7 +1062,8 @@ const MyPets = () => {
                   onChange={(e) =>
                     setNewPet({ ...newPet, type: e.target.value })
                   }
-                  className="w-full border border-[#e8d7ca] rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#c18742] focus:border-transparent"
+                  className="w-full border border-[#e8d7ca] rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#c18742] focus:border-transparent disabled:opacity-70 disabled:cursor-not-allowed"
+                  disabled={loading}
                 />
 
                 <input
@@ -1000,7 +1073,8 @@ const MyPets = () => {
                   onChange={(e) =>
                     setNewPet({ ...newPet, breed: e.target.value })
                   }
-                  className="w-full border border-[#e8d7ca] rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#c18742] focus:border-transparent"
+                  className="w-full border border-[#e8d7ca] rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#c18742] focus:border-transparent disabled:opacity-70 disabled:cursor-not-allowed"
+                  disabled={loading}
                 />
 
                 <input
@@ -1010,7 +1084,8 @@ const MyPets = () => {
                   onChange={(e) =>
                     setNewPet({ ...newPet, fatherBreed: e.target.value })
                   }
-                  className="w-full border border-[#e8d7ca] rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#c18742] focus:border-transparent"
+                  className="w-full border border-[#e8d7ca] rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#c18742] focus:border-transparent disabled:opacity-70 disabled:cursor-not-allowed"
+                  disabled={loading}
                 />
 
                 <input
@@ -1020,7 +1095,8 @@ const MyPets = () => {
                   onChange={(e) =>
                     setNewPet({ ...newPet, motherBreed: e.target.value })
                   }
-                  className="w-full border border-[#e8d7ca] rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#c18742] focus:border-transparent"
+                  className="w-full border border-[#e8d7ca] rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#c18742] focus:border-transparent disabled:opacity-70 disabled:cursor-not-allowed"
+                  disabled={loading}
                 />
 
                 <input
@@ -1030,7 +1106,8 @@ const MyPets = () => {
                   onChange={(e) =>
                     setNewPet({ ...newPet, age: e.target.value })
                   }
-                  className="w-full border border-[#e8d7ca] rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#c18742] focus:border-transparent"
+                  className="w-full border border-[#e8d7ca] rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#c18742] focus:border-transparent disabled:opacity-70 disabled:cursor-not-allowed"
+                  disabled={loading}
                 />
 
                 <div className="flex gap-2 pt-4">
@@ -1039,7 +1116,8 @@ const MyPets = () => {
                       setModalVisible(false);
                       setEditMode(false);
                     }}
-                    className="flex-1 bg-[#f8f6f4] text-[#795225] py-3 rounded-lg font-medium hover:bg-[#e8d7ca] transition-colors border border-[#e8d7ca]"
+                    className="flex-1 bg-[#f8f6f4] text-[#795225] py-3 rounded-lg font-medium hover:bg-[#e8d7ca] transition-colors border border-[#e8d7ca] disabled:opacity-70 disabled:cursor-not-allowed"
+                    disabled={loading}
                   >
                     Cancel
                   </button>
@@ -1053,7 +1131,8 @@ const MyPets = () => {
                           handleDeletePet(selectedPet._id);
                         }
                       }}
-                      className="flex-1 bg-red-500 text-white py-3 rounded-lg font-medium hover:bg-red-600 transition-colors"
+                      className="flex-1 bg-red-500 text-white py-3 rounded-lg font-medium hover:bg-red-600 transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
+                      disabled={loading}
                     >
                       Delete
                     </button>
@@ -1061,9 +1140,19 @@ const MyPets = () => {
 
                   <button
                     onClick={handleAddPet}
-                    className="flex-1 bg-gradient-to-r from-[#c18742] to-[#a87338] text-white py-3 rounded-lg font-medium hover:from-[#a87338] hover:to-[#8b5e2f] transition-all"
+                    className="flex-1 bg-gradient-to-r from-[#c18742] to-[#a87338] text-white py-3 rounded-lg font-medium hover:from-[#a87338] hover:to-[#8b5e2f] transition-all disabled:opacity-70 disabled:cursor-not-allowed relative"
+                    disabled={loading}
                   >
-                    {editMode ? "Update" : "Add"}
+                    {loading ? (
+                      <div className="flex items-center justify-center gap-2">
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        <span>{editMode ? "Updating..." : "Adding..."}</span>
+                      </div>
+                    ) : editMode ? (
+                      "Update"
+                    ) : (
+                      "Add"
+                    )}
                   </button>
                 </div>
               </div>
@@ -1088,6 +1177,7 @@ const MyPets = () => {
                     setSelectedSchedule(null);
                   }}
                   className="p-1 hover:bg-[#f8f6f4] rounded transition-colors"
+                  disabled={addingSchedule}
                 >
                   <X size={24} className="text-[#795225]" />
                 </button>
@@ -1103,7 +1193,8 @@ const MyPets = () => {
                     onChange={(e) =>
                       setNewSchedule({ ...newSchedule, type: e.target.value })
                     }
-                    className="w-full border border-[#e8d7ca] rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#c18742] focus:border-transparent"
+                    className="w-full border border-[#e8d7ca] rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#c18742] focus:border-transparent disabled:opacity-70 disabled:cursor-not-allowed"
+                    disabled={addingSchedule}
                   >
                     <option value="Feeding">Feeding</option>
                     <option value="Medication">Medication</option>
@@ -1124,7 +1215,8 @@ const MyPets = () => {
                       onChange={(e) =>
                         setNewSchedule({ ...newSchedule, hour: e.target.value })
                       }
-                      className="w-full border border-[#e8d7ca] rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#c18742] focus:border-transparent"
+                      className="w-full border border-[#e8d7ca] rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#c18742] focus:border-transparent disabled:opacity-70 disabled:cursor-not-allowed"
+                      disabled={addingSchedule}
                     >
                       {Array.from({ length: 12 }, (_, i) => i + 1).map(
                         (hour) => (
@@ -1142,7 +1234,8 @@ const MyPets = () => {
                           minute: e.target.value,
                         })
                       }
-                      className="w-full border border-[#e8d7ca] rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#c18742] focus:border-transparent"
+                      className="w-full border border-[#e8d7ca] rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#c18742] focus:border-transparent disabled:opacity-70 disabled:cursor-not-allowed"
+                      disabled={addingSchedule}
                     >
                       {["00", "15", "30", "45"].map((minute) => (
                         <option key={minute} value={minute}>
@@ -1155,7 +1248,8 @@ const MyPets = () => {
                       onChange={(e) =>
                         setNewSchedule({ ...newSchedule, ampm: e.target.value })
                       }
-                      className="w-full border border-[#e8d7ca] rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#c18742] focus:border-transparent"
+                      className="w-full border border-[#e8d7ca] rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#c18742] focus:border-transparent disabled:opacity-70 disabled:cursor-not-allowed"
+                      disabled={addingSchedule}
                     >
                       <option value="AM">AM</option>
                       <option value="PM">PM</option>
@@ -1175,7 +1269,8 @@ const MyPets = () => {
                         frequency: e.target.value,
                       })
                     }
-                    className="w-full border border-[#e8d7ca] rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#c18742] focus:border-transparent"
+                    className="w-full border border-[#e8d7ca] rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#c18742] focus:border-transparent disabled:opacity-70 disabled:cursor-not-allowed"
+                    disabled={addingSchedule}
                   >
                     <option value="Daily">Daily</option>
                     <option value="Weekly">Weekly</option>
@@ -1194,7 +1289,8 @@ const MyPets = () => {
                       setNewSchedule({ ...newSchedule, notes: e.target.value })
                     }
                     rows={3}
-                    className="w-full border border-[#e8d7ca] rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#c18742] focus:border-transparent resize-none"
+                    className="w-full border border-[#e8d7ca] rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#c18742] focus:border-transparent resize-none disabled:opacity-70 disabled:cursor-not-allowed"
+                    disabled={addingSchedule}
                   />
                 </div>
 
@@ -1205,7 +1301,8 @@ const MyPets = () => {
                       setEditScheduleMode(false);
                       setSelectedSchedule(null);
                     }}
-                    className="flex-1 bg-[#f8f6f4] text-[#795225] py-3 rounded-lg font-medium hover:bg-[#e8d7ca] transition-colors border border-[#e8d7ca]"
+                    className="flex-1 bg-[#f8f6f4] text-[#795225] py-3 rounded-lg font-medium hover:bg-[#e8d7ca] transition-colors border border-[#e8d7ca] disabled:opacity-70 disabled:cursor-not-allowed"
+                    disabled={addingSchedule}
                   >
                     Cancel
                   </button>
@@ -1224,7 +1321,8 @@ const MyPets = () => {
                           );
                         }
                       }}
-                      className="flex-1 bg-red-500 text-white py-3 rounded-lg font-medium hover:bg-red-600 transition-colors"
+                      className="flex-1 bg-red-500 text-white py-3 rounded-lg font-medium hover:bg-red-600 transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
+                      disabled={addingSchedule}
                     >
                       Delete
                     </button>
@@ -1232,9 +1330,21 @@ const MyPets = () => {
 
                   <button
                     onClick={handleAddSchedule}
-                    className="flex-1 bg-gradient-to-r from-[#c18742] to-[#a87338] text-white py-3 rounded-lg font-medium hover:from-[#a87338] hover:to-[#8b5e2f] transition-all"
+                    className="flex-1 bg-gradient-to-r from-[#c18742] to-[#a87338] text-white py-3 rounded-lg font-medium hover:from-[#a87338] hover:to-[#8b5e2f] transition-all disabled:opacity-70 disabled:cursor-not-allowed relative"
+                    disabled={addingSchedule}
                   >
-                    {editScheduleMode ? "Update" : "Add"}
+                    {addingSchedule ? (
+                      <div className="flex items-center justify-center gap-2">
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        <span>
+                          {editScheduleMode ? "Updating..." : "Adding..."}
+                        </span>
+                      </div>
+                    ) : editScheduleMode ? (
+                      "Update"
+                    ) : (
+                      "Add"
+                    )}
                   </button>
                 </div>
               </div>
@@ -1269,6 +1379,7 @@ const MyPets = () => {
                     setSelectedHealthRecord(null);
                   }}
                   className="p-1 hover:bg-[#f8f6f4] rounded transition-colors"
+                  disabled={addingHealthRecord}
                 >
                   <X size={24} className="text-[#795225]" />
                 </button>
@@ -1282,7 +1393,8 @@ const MyPets = () => {
                     activeTab === "vaccinations"
                       ? "bg-white text-[#c18742] rounded shadow-sm"
                       : "text-[#795225] hover:text-[#55423c]"
-                  }`}
+                  } disabled:opacity-70 disabled:cursor-not-allowed`}
+                  disabled={addingHealthRecord}
                 >
                   Vaccinations
                 </button>
@@ -1292,7 +1404,8 @@ const MyPets = () => {
                     activeTab === "vetVisits"
                       ? "bg-white text-[#c18742] rounded shadow-sm"
                       : "text-[#795225] hover:text-[#55423c]"
-                  }`}
+                  } disabled:opacity-70 disabled:cursor-not-allowed`}
+                  disabled={addingHealthRecord}
                 >
                   Vet Visits
                 </button>
@@ -1318,7 +1431,8 @@ const MyPets = () => {
                           name: e.target.value,
                         })
                       }
-                      className="w-full border border-[#e8d7ca] rounded-lg px-4 py-3 mb-3 focus:outline-none focus:ring-2 focus:ring-[#c18742] focus:border-transparent"
+                      className="w-full border border-[#e8d7ca] rounded-lg px-4 py-3 mb-3 focus:outline-none focus:ring-2 focus:ring-[#c18742] focus:border-transparent disabled:opacity-70 disabled:cursor-not-allowed"
+                      disabled={addingHealthRecord}
                     />
 
                     <DateInput
@@ -1354,7 +1468,8 @@ const MyPets = () => {
                           veterinarian: e.target.value,
                         })
                       }
-                      className="w-full border border-[#e8d7ca] rounded-lg px-4 py-3 mb-3 focus:outline-none focus:ring-2 focus:ring-[#c18742] focus:border-transparent"
+                      className="w-full border border-[#e8d7ca] rounded-lg px-4 py-3 mb-3 focus:outline-none focus:ring-2 focus:ring-[#c18742] focus:border-transparent disabled:opacity-70 disabled:cursor-not-allowed"
+                      disabled={addingHealthRecord}
                     />
 
                     <textarea
@@ -1367,7 +1482,8 @@ const MyPets = () => {
                         })
                       }
                       rows={3}
-                      className="w-full border border-[#e8d7ca] rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#c18742] focus:border-transparent resize-none"
+                      className="w-full border border-[#e8d7ca] rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#c18742] focus:border-transparent resize-none disabled:opacity-70 disabled:cursor-not-allowed"
+                      disabled={addingHealthRecord}
                     />
                   </div>
                 )}
@@ -1399,7 +1515,8 @@ const MyPets = () => {
                           reason: e.target.value,
                         })
                       }
-                      className="w-full border border-[#e8d7ca] rounded-lg px-4 py-3 mb-3 focus:outline-none focus:ring-2 focus:ring-[#c18742] focus:border-transparent"
+                      className="w-full border border-[#e8d7ca] rounded-lg px-4 py-3 mb-3 focus:outline-none focus:ring-2 focus:ring-[#c18742] focus:border-transparent disabled:opacity-70 disabled:cursor-not-allowed"
+                      disabled={addingHealthRecord}
                     />
 
                     <input
@@ -1412,7 +1529,8 @@ const MyPets = () => {
                           veterinarian: e.target.value,
                         })
                       }
-                      className="w-full border border-[#e8d7ca] rounded-lg px-4 py-3 mb-3 focus:outline-none focus:ring-2 focus:ring-[#c18742] focus:border-transparent"
+                      className="w-full border border-[#e8d7ca] rounded-lg px-4 py-3 mb-3 focus:outline-none focus:ring-2 focus:ring-[#c18742] focus:border-transparent disabled:opacity-70 disabled:cursor-not-allowed"
+                      disabled={addingHealthRecord}
                     />
 
                     <DateInput
@@ -1433,7 +1551,8 @@ const MyPets = () => {
                           diagnosis: e.target.value,
                         })
                       }
-                      className="w-full border border-[#e8d7ca] rounded-lg px-4 py-3 mb-3 focus:outline-none focus:ring-2 focus:ring-[#c18742] focus:border-transparent"
+                      className="w-full border border-[#e8d7ca] rounded-lg px-4 py-3 mb-3 focus:outline-none focus:ring-2 focus:ring-[#c18742] focus:border-transparent disabled:opacity-70 disabled:cursor-not-allowed"
+                      disabled={addingHealthRecord}
                     />
 
                     <input
@@ -1446,7 +1565,8 @@ const MyPets = () => {
                           treatment: e.target.value,
                         })
                       }
-                      className="w-full border border-[#e8d7ca] rounded-lg px-4 py-3 mb-3 focus:outline-none focus:ring-2 focus:ring-[#c18742] focus:border-transparent"
+                      className="w-full border border-[#e8d7ca] rounded-lg px-4 py-3 mb-3 focus:outline-none focus:ring-2 focus:ring-[#c18742] focus:border-transparent disabled:opacity-70 disabled:cursor-not-allowed"
+                      disabled={addingHealthRecord}
                     />
 
                     <textarea
@@ -1459,7 +1579,8 @@ const MyPets = () => {
                         })
                       }
                       rows={3}
-                      className="w-full border border-[#e8d7ca] rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#c18742] focus:border-transparent resize-none"
+                      className="w-full border border-[#e8d7ca] rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#c18742] focus:border-transparent resize-none disabled:opacity-70 disabled:cursor-not-allowed"
+                      disabled={addingHealthRecord}
                     />
                   </div>
                 )}
@@ -1474,7 +1595,8 @@ const MyPets = () => {
                     setEditHealthRecordMode(false);
                     setSelectedHealthRecord(null);
                   }}
-                  className="flex-1 bg-[#f8f6f4] text-[#795225] py-3 rounded-lg font-medium hover:bg-[#e8d7ca] transition-colors border border-[#e8d7ca]"
+                  className="flex-1 bg-[#f8f6f4] text-[#795225] py-3 rounded-lg font-medium hover:bg-[#e8d7ca] transition-colors border border-[#e8d7ca] disabled:opacity-70 disabled:cursor-not-allowed"
+                  disabled={addingHealthRecord}
                 >
                   Close
                 </button>
@@ -1485,9 +1607,21 @@ const MyPets = () => {
                       ? handleAddVaccination
                       : handleAddVetVisit
                   }
-                  className="flex-1 bg-gradient-to-r from-[#c18742] to-[#a87338] text-white py-3 rounded-lg font-medium hover:from-[#a87338] hover:to-[#8b5e2f] transition-all"
+                  className="flex-1 bg-gradient-to-r from-[#c18742] to-[#a87338] text-white py-3 rounded-lg font-medium hover:from-[#a87338] hover:to-[#8b5e2f] transition-all disabled:opacity-70 disabled:cursor-not-allowed relative"
+                  disabled={addingHealthRecord}
                 >
-                  {editHealthRecordMode ? "Update" : "Add"}
+                  {addingHealthRecord ? (
+                    <div className="flex items-center justify-center gap-2">
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      <span>
+                        {editHealthRecordMode ? "Updating..." : "Adding..."}
+                      </span>
+                    </div>
+                  ) : editHealthRecordMode ? (
+                    "Update"
+                  ) : (
+                    "Add"
+                  )}
                 </button>
               </div>
             </div>
